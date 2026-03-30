@@ -1,16 +1,11 @@
 # ScreamAPI
 #### Legit DLC Unlocker for Epic Games
 Welcome to the ScreamAPI repository.
+I'm  using AI to modify a dead tool so bare with me
 
 ## Download
 You can always download the latest ScreamAPI release in this repository at the following address:
 https://github.com/acidicoala/ScreamAPI/releases/latest
-
-## Links
-
-|![](https://i.ibb.co/zfg4kmg/cs.png)|![](https://i.ibb.co/9YrFrMH/circle-icon-16px.png)|![](https://i.ibb.co/qBZjbdc/sheets.png)                                                                                                                      |![](https://i.ibb.co/mHytW8F/forms-16px.png)                                                                                          |
-|------------------------------------|--------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------|
-|[**Support Forum**](https://cs.rin.ru/forum/viewtopic.php?f=29&t=106474)|[**Download Stats**](https://scream-api-stats.web.app/)| [**Compatibility Spreadsheet**](https://docs.google.com/spreadsheets/d/1yCm2KWSFlV283SI35QpI86v68bFnK7MwxicKBEihIJM)|[**Test result submission form**](https://docs.google.com/forms/d/e/1FAIpQLSeEGotx8ThaHQK8ywW_UPwTJysUZWnCPIDNBJjNpvXAYLPBEg/viewform)|
 
 ## Acknowledgements
 
