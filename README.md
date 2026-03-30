@@ -1,6 +1,4 @@
 # ScreamAPI
-#### Legit DLC Unlocker for Epic Games
-Welcome to the ScreamAPI repository.
 I'm  using AI to modify a dead tool so bare with me
 
 ## Download
