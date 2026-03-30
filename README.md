@@ -29,19 +29,6 @@ The overlay code was originally written for an older EOS SDK (pre‑v1.15). To m
 
 ---
 
-## 📦 Building
-
-### Requirements
-- Visual Studio 2022 (with **Desktop development with C++** workload)
-- Windows 10/11 SDK (10.0.19041.0 or later)
-- EOS SDK 1.17.1.3 headers and DLLs (included in the repository under `res/`)
-
-### Steps
-1. Open **Developer Command Prompt for VS 2022** (or set up the environment manually).
-2. Navigate to the project folder:
-   ```cmd
-   cd path\to\ScreamAPI-1.13.0-1
-
 ## Download
 You can always download the latest ScreamAPI release in this repository at the following address:
 https://github.com/acidicoala/ScreamAPI/releases/latest
