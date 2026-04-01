@@ -19,7 +19,7 @@ EOS_ENUM_END(EOS_EResult);
 #undef EOS_RESULT_VALUE_LAST
 
 /**
- * Returns a string representation of an EOS_EResult. 
+ * Returns a string representation of an EOS_EResult.
  * The return value is never null.
  * The return value must not be freed.
  *
@@ -47,61 +47,61 @@ EOS_DECLARE_FUNC(EOS_Bool) EOS_EResult_IsOperationComplete(EOS_EResult Result);
 EOS_DECLARE_FUNC(EOS_EResult) EOS_ByteArray_ToString(const uint8_t* ByteArray, const uint32_t Length, char* OutBuffer, uint32_t* InOutBufferLength);
 
 /**
- * A handle to a user's Epic Online Services Account ID
+ * A handle to a user's Epic Account ID
  * This ID is associated with a specific login associated with Epic Account Services
  *
  * @see EOS_Auth_Login
  */
 typedef struct EOS_EpicAccountIdDetails* EOS_EpicAccountId;
 
-/** 
- * Check whether or not the given Epic Online Services Account ID is considered valid
+/**
+ * Check whether or not the given Epic Account ID is considered valid
  * NOTE: This will return true for any EOS_EpicAccountId created with EOS_EpicAccountId_FromString as there is no validation
- * 
- * @param AccountId The Epic Online Services Account ID to check for validity
+ *
+ * @param AccountId The Epic Account ID to check for validity
  * @return EOS_TRUE if the EOS_EpicAccountId is valid, otherwise EOS_FALSE
  */
 EOS_DECLARE_FUNC(EOS_Bool) EOS_EpicAccountId_IsValid(EOS_EpicAccountId AccountId);
 
 /**
- * Retrieve a null-terminated stringified Epic Online Services Account ID from an EOS_EpicAccountId. This is useful for replication of Epic Online Services Account IDs in multiplayer games.
- * This string will be no larger than EOS_EPICACCOUNTID_MAX_LENGTH + 1 and will only contain UTF8-encoded printable characters (excluding the null-terminator).
+ * Retrieve a null-terminated stringified Epic Account ID from an EOS_EpicAccountId. This is useful for replication of Epic Account IDs in multiplayer games.
+ * This string will be no larger than EOS_EPICACCOUNTID_MAX_LENGTH + 1 and will only contain UTF8-encoded printable characters as well as a null-terminator.
  *
- * @param AccountId The Epic Online Services Account ID for which to retrieve the stringified version.
+ * @param AccountId The Epic Account ID for which to retrieve the stringified version.
  * @param OutBuffer The buffer into which the character data should be written
  * @param InOutBufferLength The size of the OutBuffer in characters.
  *                          The input buffer should include enough space to be null-terminated.
- *                          When the function returns, this parameter will be filled with the length of the string copied into OutBuffer including the null termination character.
+ *                          When the function returns, this parameter will be filled with the length of the string copied into OutBuffer including the null-termination character.
  *
- * @return An EOS_EResult that indicates whether the Epic Online Services Account ID string was copied into the OutBuffer.
- *         EOS_Success - The OutBuffer was filled, and InOutBufferLength contains the number of characters copied into OutBuffer including the null terminator.
+ * @return An EOS_EResult that indicates whether the Epic Account ID string was copied into the OutBuffer.
+ *         EOS_Success - The OutBuffer was filled, and InOutBufferLength contains the number of characters copied into OutBuffer including the null-terminator.
  *         EOS_InvalidParameters - Either OutBuffer or InOutBufferLength were passed as NULL parameters.
  *         EOS_InvalidUser - The AccountId is invalid and cannot be stringified.
- *         EOS_LimitExceeded - The OutBuffer is not large enough to receive the Epic Online Services Account ID string. InOutBufferLength contains the required minimum length to perform the operation successfully.
+ *         EOS_LimitExceeded - The OutBuffer is not large enough to receive the Epic Account ID string. InOutBufferLength contains the required minimum length to perform the operation successfully.
  */
 EOS_DECLARE_FUNC(EOS_EResult) EOS_EpicAccountId_ToString(EOS_EpicAccountId AccountId, char* OutBuffer, int32_t* InOutBufferLength);
 
 /**
- * Retrieve an EOS_EpicAccountId from a raw string representing an Epic Online Services Account ID. The input string must be null-terminated.
+ * Retrieve an EOS_EpicAccountId from a raw string representing an Epic Account ID. The input string must be null-terminated.
  * NOTE: There is no validation on the string format, this should only be used with values serialized from legitimate sources such as EOS_EpicAccountId_ToString
  *
- * @param AccountIdString The stringified account ID for which to retrieve the Epic Online Services Account ID
+ * @param AccountIdString The stringified account ID for which to retrieve the Epic Account ID
  * @return The EOS_EpicAccountId that corresponds to the AccountIdString
  */
 EOS_DECLARE_FUNC(EOS_EpicAccountId) EOS_EpicAccountId_FromString(const char* AccountIdString);
 
-/** 
+/**
  * A character buffer of this size is large enough to fit a successful output of EOS_EpicAccountId_ToString. This length does not include the null-terminator.
  * The EpicAccountId data structure is opaque in nature and no assumptions of its structure should be inferred
  */
 #define EOS_EPICACCOUNTID_MAX_LENGTH 32
 
-/** 
+/**
  * A handle to a user's Product User ID (game services related ecosystem)
  * This ID is associated with any of the external account providers (of which Epic Account Services is one)
- * 
+ *
  * @see EOS_Connect_Login
- * @see EOS_EExternalCredentialType 
+ * @see EOS_EExternalCredentialType
  */
 typedef struct EOS_ProductUserIdDetails* EOS_ProductUserId;
 
@@ -116,16 +116,16 @@ EOS_DECLARE_FUNC(EOS_Bool) EOS_ProductUserId_IsValid(EOS_ProductUserId AccountId
 
 /**
  * Retrieve a null-terminated stringified Product User ID from an EOS_ProductUserId. This is useful for replication of Product User IDs in multiplayer games.
- * This string will be no larger than EOS_PRODUCTUSERID_MAX_LENGTH + 1 and will only contain UTF8-encoded printable characters (excluding the null-terminator).
+ * This string will be no larger than EOS_PRODUCTUSERID_MAX_LENGTH + 1 and will only contain UTF8-encoded printable characters as well as the null-terminator.
  *
  * @param AccountId The Product User ID for which to retrieve the stringified version.
  * @param OutBuffer The buffer into which the character data should be written
  * @param InOutBufferLength The size of the OutBuffer in characters.
  *                          The input buffer should include enough space to be null-terminated.
- *                          When the function returns, this parameter will be filled with the length of the string copied into OutBuffer including the null termination character.
+ *                          When the function returns, this parameter will be filled with the length of the string copied into OutBuffer including the null-termination character.
  *
  * @return An EOS_EResult that indicates whether the Product User ID string was copied into the OutBuffer.
- *         EOS_Success - The OutBuffer was filled, and InOutBufferLength contains the number of characters copied into OutBuffer including the null terminator.
+ *         EOS_Success - The OutBuffer was filled, and InOutBufferLength contains the number of characters copied into OutBuffer including the null-terminator.
  *         EOS_InvalidParameters - Either OutBuffer or InOutBufferLength were passed as NULL parameters.
  *         EOS_InvalidUser - The AccountId is invalid and cannot be stringified.
  *         EOS_LimitExceeded - The OutBuffer is not large enough to receive the Product User ID string. InOutBufferLength contains the required minimum length to perform the operation successfully.
@@ -142,10 +142,10 @@ EOS_DECLARE_FUNC(EOS_EResult) EOS_ProductUserId_ToString(EOS_ProductUserId Accou
 EOS_DECLARE_FUNC(EOS_ProductUserId) EOS_ProductUserId_FromString(const char* ProductUserIdString);
 
 /** A character buffer of this size is large enough to fit a successful output of EOS_ProductUserId_ToString. This length does not include the null-terminator. */
-#define EOS_PRODUCTUSERID_MAX_LENGTH 128
+#define EOS_PRODUCTUSERID_MAX_LENGTH 32
 
 /** Handle to an existing registered notification (0 is an invalid handle) */
-EXTERN_C typedef uint64_t EOS_NotificationId;
+EOS_EXTERN_C typedef uint64_t EOS_NotificationId;
 
 /** An invalid notification ID */
 #define EOS_INVALID_NOTIFICATIONID ((EOS_NotificationId)0)
@@ -157,16 +157,16 @@ typedef struct EOS_ContinuanceTokenDetails* EOS_ContinuanceToken;
  * Retrieve a null-terminated stringified continuance token from an EOS_ContinuanceToken.
  *
  * To get the required buffer size, call once with OutBuffer set to NULL, InOutBufferLength will contain the buffer size needed.
- * Call again with valid params to get the stringified continuance token which will only contain UTF8-encoded printable characters (excluding the null-terminator).
+ * Call again with valid params to get the stringified continuance token which will only contain UTF8-encoded printable characters as well as the null-terminator.
  *
  * @param ContinuanceToken The continuance token for which to retrieve the stringified version.
  * @param OutBuffer The buffer into which the character data should be written
  * @param InOutBufferLength The size of the OutBuffer in characters.
  *                          The input buffer should include enough space to be null-terminated.
- *                          When the function returns, this parameter will be filled with the length of the string copied into OutBuffer including the null termination character.
+ *                          When the function returns, this parameter will be filled with the length of the string copied into OutBuffer including the null-termination character.
  *
  * @return An EOS_EResult that indicates whether the continuance token string was copied into the OutBuffer.
- *         EOS_Success - The OutBuffer was filled, and InOutBufferLength contains the number of characters copied into OutBuffer including the null terminator.
+ *         EOS_Success - The OutBuffer was filled, and InOutBufferLength contains the number of characters copied into OutBuffer including the null-terminator.
  *         EOS_InvalidParameters - Either OutBuffer or InOutBufferLength were passed as NULL parameters.
  *         EOS_InvalidUser - The AccountId is invalid and cannot be stringified.
  *         EOS_LimitExceeded - The OutBuffer is not large enough to receive the continuance token string. InOutBufferLength contains the required minimum length to perform the operation successfully.
@@ -249,39 +249,53 @@ typedef EOS_EAttributeType EOS_ESessionAttributeType;
 typedef EOS_EAttributeType EOS_ELobbyAttributeType;
 
 /**
- * All comparison operators associated with parameters in a search query
+ * All comparison operators associated with attributes.
  *
  * @see EOS_LobbySearch_SetParameter
  * @see EOS_SessionSearch_SetParameter
  */
 EOS_ENUM(EOS_EComparisonOp,
-	/** Value must equal the one stored on the lobby/session */
+	/** Value must equal the one stored in the attribute */
 	EOS_CO_EQUAL = 0,
-	/** Value must not equal the one stored on the lobby/session */
+	/** Value must not equal the one stored in the attribute */
 	EOS_CO_NOTEQUAL = 1,
-	/** Value must be strictly greater than the one stored on the lobby/session */
+	/** Value must be strictly greater than the one stored in the attribute */
 	EOS_CO_GREATERTHAN = 2,
-	/** Value must be greater than or equal to the one stored on the lobby/session */
+	/** Value must be greater than or equal to the one stored in the attribute */
 	EOS_CO_GREATERTHANOREQUAL = 3,
-	/** Value must be strictly less than the one stored on the lobby/session */
+	/** Value must be strictly less than the one stored in the attribute */
 	EOS_CO_LESSTHAN = 4,
-	/** Value must be less than or equal to the one stored on the lobby/session */
+	/** Value must be less than or equal to the one stored in the attribute */
 	EOS_CO_LESSTHANOREQUAL = 5,
 	/** Prefer values nearest the one specified ie. abs(SearchValue-SessionValue) closest to 0 */
 	EOS_CO_DISTANCE = 6,
-	/** Value stored on the lobby/session may be any from a specified list */
+	/** Value stored in the attribute may be any from a specified list */
 	EOS_CO_ANYOF = 7,
-	/** Value stored on the lobby/session may NOT be any from a specified list */
+	/** Value stored in the attribute may NOT be any from a specified list */
 	EOS_CO_NOTANYOF = 8,
-	/** This one value is a part of a collection */
+	/** This one value is a part of a collection. Supported in EOS_SessionSearch_SetParameter only. */
 	EOS_CO_ONEOF = 9,
-	/** This one value is NOT part of a collection */
+	/** This one value is NOT part of a collection. Supported in EOS_SessionSearch_SetParameter only. */
 	EOS_CO_NOTONEOF = 10,
-	/** This value is a CASE SENSITIVE substring of an attribute stored on the lobby/session */
-	EOS_CO_CONTAINS = 11
+	/** This value is a CASE SENSITIVE substring of an attribute */
+	EOS_CO_CONTAINS = 11,
+	/** This value is a regex match of an attribute */
+	EOS_CO_REGEXMATCH = 12,
+	/** This array or string value's size must be equal to the one stored in the attribute */
+	EOS_CO_SIZE = 13
 );
 
 typedef EOS_EComparisonOp EOS_EOnlineComparisonOp;
+
+/**
+ * The EOS Logical Combine Operator.
+ */
+EOS_ENUM(EOS_ELogicalCombineOp,
+	/** The AND operator used to logically combine comparison operations. */
+	EOS_LCO_AND,
+	/** The OR operator used to logically combine comparison operations. */
+	EOS_LCO_OR
+);
 
 /**
  * All supported external account providers
@@ -295,12 +309,7 @@ EOS_ENUM(EOS_EExternalAccountType,
 	EOS_EAT_STEAM = 1,
 	/** External account is associated with PlayStation(TM)Network */
 	EOS_EAT_PSN = 2,
-	/**
-	 * External account is associated with Xbox Live
-	 *
-	 * With EOS Connect API, the associated account type is Partner XUID (PXUID).
-	 * With EOS UserInfo API, the associated account type is Xbox Live ID (XUID).
-	 */
+	/** External account is associated with Xbox Live */
 	EOS_EAT_XBL = 3,
 	/** External account is associated with Discord */
 	EOS_EAT_DISCORD = 4,
@@ -324,7 +333,11 @@ EOS_ENUM(EOS_EExternalAccountType,
 	/** External account is associated with Oculus */
 	EOS_EAT_OCULUS = 11,
 	/** External account is associated with itch.io */
-	EOS_EAT_ITCHIO = 12
+	EOS_EAT_ITCHIO = 12,
+	/** External account is associated with Amazon */
+	EOS_EAT_AMAZON = 13,
+	/** External account is associated with Viveport */
+	EOS_EAT_VIVEPORT = 14
 );
 
 /**
@@ -340,23 +353,30 @@ EOS_ENUM(EOS_EExternalAccountType,
  */
 EOS_ENUM(EOS_EExternalCredentialType,
 	/**
-	 * Epic Games User Token
+	 * Epic Account Services Token
 	 *
-	 * Acquired using EOS_Auth_CopyUserAuthToken that returns EOS_Auth_Token::AccessToken.
+	 * Using ID Token is preferred, retrieved with EOS_Auth_CopyIdToken that returns EOS_Auth_IdToken::JsonWebToken.
+	 * Using Auth Token is supported for backwards compatibility, retrieved with EOS_Auth_CopyUserAuthToken that returns EOS_Auth_Token::AccessToken.
 	 *
 	 * Supported with EOS_Connect_Login.
+	 *
+	 * @see EOS_Auth_CopyIdToken
+	 * @see EOS_Auth_CopyUserAuthToken
 	 */
 	EOS_ECT_EPIC = 0,
 	/**
 	 * Steam Encrypted App Ticket
+	 * Note that EOS_ECT_STEAM_APP_TICKET is deprecated for use with EOS_Auth_Login. Use EOS_ECT_STEAM_SESSION_TICKET instead.
 	 *
 	 * Generated using the ISteamUser::RequestEncryptedAppTicket API of Steamworks SDK.
 	 * For ticket generation parameters, use pDataToInclude(NULL) and cbDataToInclude(0).
 	 *
-	 * The retrieved App Ticket byte buffer needs to be converted into a hex-encoded UTF-8 string (e.g. "FA87097A..") before passing it to the EOS_Auth_Login or EOS_Connect_Login APIs.
+	 * The retrieved App Ticket byte buffer needs to be converted into a hex-encoded UTF-8 string (e.g. "FA87097A..") before passing it to the EOS_Connect_Login API.
 	 * EOS_ByteArray_ToString can be used for this conversion.
 	 *
-	 * Supported with EOS_Auth_Login, EOS_Connect_Login.
+	 * Supported with EOS_Connect_Login.
+	 *
+	 * @see EOS_ECT_STEAM_SESSION_TICKET
 	 */
 	EOS_ECT_STEAM_APP_TICKET = 1,
 	/**
@@ -403,6 +423,8 @@ EOS_ENUM(EOS_EExternalCredentialType,
 	 * This is the common Nintendo account that users login with outside the Nintendo Switch device.
 	 *
 	 * Supported with EOS_Auth_Login, EOS_Connect_Login.
+	 * 
+	 * Note: EOS_Auth_Login usage is restricted to Epic first party products only, attempting to use it will result in authentication failures.
 	 */
 	EOS_ECT_NINTENDO_ID_TOKEN = 6,
 	/**
@@ -424,10 +446,14 @@ EOS_ENUM(EOS_EExternalCredentialType,
 	 * progression if it is only associated with this account type.
 	 *
 	 * Supported with EOS_Auth_Login, EOS_Connect_Login.
+	 * 
+	 * Note: EOS_Auth_Login usage is restricted to Epic first party products only, attempting to use it will result in authentication failures.
 	 */
 	EOS_ECT_NINTENDO_NSA_ID_TOKEN = 7,
 	/**
 	 * Uplay Access Token
+	 * 
+	 * Supported with EOS_Connect_Login.
 	 */
 	EOS_ECT_UPLAY_ACCESS_TOKEN = 8,
 	/**
@@ -494,7 +520,74 @@ EOS_ENUM(EOS_EExternalCredentialType,
 	 *
 	 * Supported with EOS_Connect_Login.
 	 */
-	EOS_ECT_ITCHIO_KEY = 15
+	EOS_ECT_ITCHIO_KEY = 15,
+	/**
+	 * Epic Games ID Token
+	 *
+	 * Acquired using EOS_Auth_CopyIdToken that returns EOS_Auth_IdToken::JsonWebToken.
+	 *
+	 * Supported with EOS_Connect_Login.
+	 */
+	EOS_ECT_EPIC_ID_TOKEN = 16,
+	/**
+	 * Amazon Access Token
+	 *
+	 * Supported with EOS_Connect_Login.
+	 */
+	EOS_ECT_AMAZON_ACCESS_TOKEN = 17,
+	/**
+	 * Steam Auth Session Ticket
+	 *
+	 * Generated using the ISteamUser::GetAuthTicketForWebApi API of Steamworks SDK.
+	 *
+	 * @attention
+	 * The pchIdentity input parameter of GetAuthTicketForWebApi API must be set to a valid non-empty string value.
+	 * The string value used by the game client must match identically to the backend-configured value in EOS Dev Portal.
+	 * The recommended value to use is "epiconlineservices" in lowercase, matching the default value for new Steam identity provider credentials in EOS Dev Portal.
+	 * This identifier is important for security reasons to prevent session hijacking. Applications must use a dedicated unique identity identifier for Session Tickets passed to the EOS SDK APIs.
+	 * Session Tickets using the EOS-assigned identifier must not be used with anything else than the EOS SDK APIs. You must use a different identifier when generating Session Tickets to authenticate with other parties.
+	 *
+	 * @warning
+	 * To update an already live game to use the new GetAuthTicketForWebApi API instead of the deprecated GetAuthSessionTicket API, follow these steps in this order to prevent breaking the live game for players:
+	 * 1. Update your game client code to use the new ISteamUser::GetAuthTicketForWebApi API.
+	 * 2. Publish the new game client update to end-users.
+	 * 3. Update the existing Steam identity provider credentials entry in EOS Dev Portal to use the same identity string identifier as the game client.
+	 *
+	 * @example
+	 * SteamUser()->GetAuthTicketForWebApi("epiconlineservices");
+	 *
+	 * The retrieved Auth Session Ticket byte buffer needs to be converted into a hex-encoded UTF-8 string (e.g. "FA87097A..") before passing it to the EOS_Auth_Login or EOS_Connect_Login APIs.
+	 * EOS_ByteArray_ToString can be used for this conversion.
+	 *
+	 * Supported with EOS_Auth_Login, EOS_Connect_Login.
+	 *
+	 * @version 1.15.1+
+	 */
+	EOS_ECT_STEAM_SESSION_TICKET = 18,
+	/**
+	 * VIVEPORT User Session Token
+	 *
+	 * Supported with EOS_Connect_Login.
+	 */
+	EOS_ECT_VIVEPORT_USER_TOKEN = 19
 );
+
+/**
+ * This type is used to distinguish between different supported integrated platforms.
+ * Integrated platforms which are common across multiple host platforms will be defined here.
+ */
+EOS_EXTERN_C typedef const char* EOS_IntegratedPlatformType;
+/** A macro to identify an unknown integrated platform. */
+#define EOS_IPT_Unknown (const char*)NULL
+
+/** This type is used to distinguish between different online platforms. */
+EOS_EXTERN_C typedef uint32_t EOS_OnlinePlatformType;
+
+#define EOS_OPT_Unknown 0
+#define EOS_OPT_Epic 100
+#define EOS_OPT_PSN 1000
+#define EOS_OPT_Nintendo 2000
+#define EOS_OPT_XBL 3000
+#define EOS_OPT_Steam 4000
 
 #pragma pack(pop)

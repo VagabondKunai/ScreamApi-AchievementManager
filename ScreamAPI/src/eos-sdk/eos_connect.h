@@ -22,6 +22,16 @@
 EOS_DECLARE_FUNC(void) EOS_Connect_Login(EOS_HConnect Handle, const EOS_Connect_LoginOptions* Options, void* ClientData, const EOS_Connect_OnLoginCallback CompletionDelegate);
 
 /**
+ * Logout a currently logged in user.
+ * NOTE: Access tokens for Product User IDs cannot be revoked. This operation really just cleans up state for the Product User ID and locally discards any associated access token.
+ *
+ * @param Options Structure containing the input parameters for the operation
+ * @param ClientData Arbitrary data that is passed back to the caller in the CompletionDelegate.
+ * @param CompletionDelegate A callback that is fired when the operation completes, either successfully or in error.
+ */
+EOS_DECLARE_FUNC(void) EOS_Connect_Logout(EOS_HConnect Handle, const EOS_Connect_LogoutOptions* Options, void* ClientData, const EOS_Connect_OnLogoutCallback CompletionDelegate);
+
+/**
  * Create an account association with the Epic Online Service as a product user given their external auth credentials.
  *
  * @param Options structure containing a continuance token from a "user not found" response during Login (always try login first).
@@ -104,6 +114,13 @@ EOS_DECLARE_FUNC(void) EOS_Connect_CreateDeviceId(EOS_HConnect Handle, const EOS
  * The deletion is permanent and it is not possible to recover lost game data and progression
  * if the Device ID had not been linked with at least one real external user account.
  *
+ * On Android and iOS devices, uninstalling the application will automatically delete any local
+ * Device ID credentials created by the application.
+ *
+ * On Desktop platforms (Linux, macOS, Windows), Device ID credentials are not automatically deleted.
+ * Applications may re-use existing Device ID credentials for the local OS user when the application is
+ * re-installed, or call the DeleteDeviceId API on the first run to ensure a fresh start for the user.
+ *
  * @param Options structure containing operation input parameters
  * @param ClientData arbitrary data that is passed back to you in the CompletionDelegate
  * @param CompletionDelegate a callback that is fired when the delete operation completes, either successfully or in error
@@ -181,6 +198,9 @@ EOS_DECLARE_FUNC(void) EOS_Connect_TransferDeviceIdAccount(EOS_HConnect Handle, 
  * Retrieve the equivalent Product User IDs from a list of external account IDs from supported account providers.
  * The values will be cached and retrievable through EOS_Connect_GetExternalAccountMapping.
  *
+ * @note A common use case is to query other users who are connected through the same account system as the local user.
+ * Queries using external account IDs of another account system may not be available, depending on the account system specifics.
+ *
  * @param Options structure containing a list of external account IDs, in string form, to query for the Product User ID representation.
  * @param ClientData arbitrary data that is passed back to you in the CompletionDelegate.
  * @param CompletionDelegate a callback that is fired when the query operation completes, either successfully or in error.
@@ -189,7 +209,6 @@ EOS_DECLARE_FUNC(void) EOS_Connect_QueryExternalAccountMappings(EOS_HConnect Han
 
 /**
  * Retrieve the equivalent external account mappings from a list of Product User IDs.
- * This will include data for each external account info found for the linked product IDs.
  *
  * The values will be cached and retrievable via EOS_Connect_GetProductUserIdMapping, EOS_Connect_CopyProductUserExternalAccountByIndex,
  * EOS_Connect_CopyProductUserExternalAccountByAccountType or EOS_Connect_CopyProductUserExternalAccountByAccountId.
@@ -339,7 +358,7 @@ EOS_DECLARE_FUNC(EOS_ELoginStatus) EOS_Connect_GetLoginStatus(EOS_HConnect Handl
  * Notification is approximately 10 minutes prior to expiration.
  * Call EOS_Connect_Login again with valid third party credentials to refresh access.
  *
- * @note must call RemoveNotifyAuthExpiration to remove the notification.
+ * @note If the returned NotificationId is valid, you must call EOS_Connect_RemoveNotifyAuthExpiration when you no longer wish to have your NotificationHandler called.
  *
  * @param Options structure containing the API version of the callback to use.
  * @param ClientData arbitrary data that is passed back to you in the callback.
@@ -358,7 +377,7 @@ EOS_DECLARE_FUNC(void) EOS_Connect_RemoveNotifyAuthExpiration(EOS_HConnect Handl
 
 /**
  * Register to receive user login status updates.
- * @note must call RemoveNotifyLoginStatusChanged to remove the notification.
+ * @note If the returned NotificationId is valid, you must call EOS_Connect_RemoveNotifyLoginStatusChanged when you no longer wish to have your NotificationHandler called.
  *
  * @param Options structure containing the API version of the callback to use.
  * @param ClientData arbitrary data that is passed back to you in the callback.
@@ -374,3 +393,26 @@ EOS_DECLARE_FUNC(EOS_NotificationId) EOS_Connect_AddNotifyLoginStatusChanged(EOS
  * @param InId handle representing the registered callback.
  */
 EOS_DECLARE_FUNC(void) EOS_Connect_RemoveNotifyLoginStatusChanged(EOS_HConnect Handle, EOS_NotificationId InId);
+
+/**
+ * Fetches an ID token for a Product User ID.
+ *
+ * @param Options Structure containing information about the ID token to copy.
+ * @param OutIdToken The ID token for the given user, if it exists and is valid; use EOS_Connect_IdToken_Release when finished.
+ *
+ * @see EOS_Connect_IdToken_Release
+ *
+ * @return EOS_Success if the information is available and passed out in OutIdToken.
+ *         EOS_InvalidParameters if you pass a null pointer for the out parameter.
+ *         EOS_NotFound if the ID token is not found or expired.
+ */
+EOS_DECLARE_FUNC(EOS_EResult) EOS_Connect_CopyIdToken(EOS_HConnect Handle, const EOS_Connect_CopyIdTokenOptions* Options, EOS_Connect_IdToken ** OutIdToken);
+
+/**
+ * Verify a given ID token for authenticity and validity.
+ *
+ * @param Options structure containing information about the ID token to verify.
+ * @param ClientData arbitrary data that is passed back to you in the callback.
+ * @param CompletionDelegate a callback that is fired when the operation completes, either successfully or in error.
+ */
+EOS_DECLARE_FUNC(void) EOS_Connect_VerifyIdToken(EOS_HConnect Handle, const EOS_Connect_VerifyIdTokenOptions* Options, void* ClientData, const EOS_Connect_OnVerifyIdTokenCallback CompletionDelegate);

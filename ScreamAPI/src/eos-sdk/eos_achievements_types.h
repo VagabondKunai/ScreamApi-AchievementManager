@@ -6,7 +6,7 @@
 
 #pragma pack(push, 8)
 
-EXTERN_C typedef struct EOS_AchievementsHandle* EOS_HAchievements;
+EOS_EXTERN_C typedef struct EOS_AchievementsHandle* EOS_HAchievements;
 
 /** The most recent version of the EOS_Achievements_QueryDefinitions struct. */
 #define EOS_ACHIEVEMENTS_QUERYDEFINITIONS_API_LATEST 3
@@ -19,7 +19,7 @@ EOS_STRUCT(EOS_Achievements_QueryDefinitionsOptions, (
 	int32_t ApiVersion;
 	/**
 	 * Product User ID for user who is querying definitions.
-	 * The localized text returned will be based on the locale code of the given user if they have a linked Epic Online Services Account ID.
+	 * The localized text returned will be based on the locale code of the given user if they have a linked Epic Account ID.
 	 * The localized text returned can also be overridden using EOS_Platform_SetOverrideLocaleCode to override the locale.
 	 * If the locale code is not overridden and LocalUserId is not valid, default text will be returned.
 	 */
@@ -218,12 +218,12 @@ EOS_STRUCT(EOS_Achievements_PlayerAchievement, (
 	int32_t StatInfoCount;
 	/** Array of EOS_Achievements_PlayerStatInfo structures containing information about stat thresholds used to unlock the achievement and the player's current values for those stats. */
 	const EOS_Achievements_PlayerStatInfo* StatInfo;
-	/** 
-	 * Localized display name for the achievement based on this specific player's current progress on the achievement. 
+	/**
+	 * Localized display name for the achievement based on this specific player's current progress on the achievement.
 	 * @note The current progress is updated when EOS_Achievements_QueryPlayerAchievements succeeds and when an achievement is unlocked.
 	 */
 	const char* DisplayName;
-	/** 
+	/**
 	 * Localized description for the achievement based on this specific player's current progress on the achievement.
 	 * @note The current progress is updated when EOS_Achievements_QueryPlayerAchievements succeeds and when an achievement is unlocked.
 	 */
@@ -304,17 +304,19 @@ EOS_STRUCT(EOS_Achievements_OnQueryPlayerAchievementsCompleteCallbackInfo, (
 	EOS_EResult ResultCode;
 	/** Context that was passed into EOS_Achievements_QueryPlayerAchievements. */
 	void* ClientData;
-	/** The Product User ID of the user who initiated this request. */
-	EOS_ProductUserId UserId;
+	/** The Product User ID whose achievements were retrieved. */
+	EOS_ProductUserId TargetUserId;
+	/** The Product User ID of the user who initiated this request. For a Dedicated Server this should be null. */
+	EOS_ProductUserId LocalUserId;
 ));
 
- /**
-  * Function prototype definition for callbacks passed to EOS_Achievements_QueryPlayerAchievements
-  *
-  * @param Data An EOS_Achievements_OnQueryPlayerAchievementsCompleteCallbackInfo containing the output information and result
-  *
-  * @see EOS_Achievements_PlayerAchievement_Release
-  */
+/**
+ * Function prototype definition for callbacks passed to EOS_Achievements_QueryPlayerAchievements
+ *
+ * @param Data An EOS_Achievements_OnQueryPlayerAchievementsCompleteCallbackInfo containing the output information and result
+ *
+ * @see EOS_Achievements_PlayerAchievement_Release
+ */
 EOS_DECLARE_CALLBACK(EOS_Achievements_OnQueryPlayerAchievementsCompleteCallback, const EOS_Achievements_OnQueryPlayerAchievementsCompleteCallbackInfo* Data);
 
 

@@ -26,6 +26,9 @@
 #include "eos_kws_types.h"
 #include "eos_rtc_types.h"
 #include "eos_rtc_admin_types.h"
+#include "eos_progressionsnapshot_types.h"
+#include "eos_custominvites_types.h"
+#include "eos_integratedplatform_types.h"
 
 /**
  * The Platform Instance is used to gain access to all other Epic Online Service interfaces and to drive internal operations through the Tick.
@@ -41,7 +44,7 @@
 
 /**
  * Notify the platform instance to do work. This function must be called frequently in order for the services provided by the SDK to properly
- * function. For tick-based applications, it is usually desireable to call this once per-tick.
+ * function. For tick-based applications, it is usually desirable to call this once per-tick.
  */
 EOS_DECLARE_FUNC(void) EOS_Platform_Tick(EOS_HPlatform Handle);
 
@@ -237,6 +240,18 @@ EOS_DECLARE_FUNC(EOS_HAntiCheatClient) EOS_Platform_GetAntiCheatClientInterface(
 EOS_DECLARE_FUNC(EOS_HAntiCheatServer) EOS_Platform_GetAntiCheatServerInterface(EOS_HPlatform Handle);
 
 /**
+ * Get the active country code that the SDK will send to services which require it.
+ * This returns the override value otherwise it will use the country code of the given user.
+ * This is currently used for determining pricing.
+ * Get a handle to the ProgressionSnapshot Interface.
+ * @return EOS_HProgressionSnapshot handle
+ *
+ * @see eos_progressionsnapshot.h
+ * @see eos_progressionsnapshot_types.h
+ */
+EOS_DECLARE_FUNC(EOS_HProgressionSnapshot) EOS_Platform_GetProgressionSnapshotInterface(EOS_HPlatform Handle);
+
+/**
  * Get a handle to the Reports Interface.
  * @return EOS_HReports handle
  *
@@ -262,6 +277,24 @@ EOS_DECLARE_FUNC(EOS_HSanctions) EOS_Platform_GetSanctionsInterface(EOS_HPlatfor
  * @see eos_kws_types.h
  */
 EOS_DECLARE_FUNC(EOS_HKWS) EOS_Platform_GetKWSInterface(EOS_HPlatform Handle);
+
+/**
+ * Get a handle to the Custom Invites Interface.
+ * @return EOS_HCustomInvites handle
+ *
+ * @see eos_custominvites.h
+ * @see eos_custominvites_types.h
+ */
+EOS_DECLARE_FUNC(EOS_HCustomInvites) EOS_Platform_GetCustomInvitesInterface(EOS_HPlatform Handle);
+
+/**
+ * Get a handle to the Integrated Platform Interface.
+ * @return EOS_HIntegratedPlatform handle
+ *
+ * @see eos_integratedplatform.h
+ * @see eos_integratedplatform_types.h
+ */
+EOS_DECLARE_FUNC(EOS_HIntegratedPlatform) EOS_Platform_GetIntegratedPlatformInterface(EOS_HPlatform Handle);
 
 /**
  * This only will return the value set as the override otherwise EOS_NotFound is returned.
@@ -371,7 +404,14 @@ EOS_DECLARE_FUNC(EOS_EResult) EOS_Platform_SetOverrideCountryCode(EOS_HPlatform 
 EOS_DECLARE_FUNC(EOS_EResult) EOS_Platform_SetOverrideLocaleCode(EOS_HPlatform Handle, const char* NewLocaleCode);
 
 /**
- * Checks if the app was launched through the Epic Launcher, and relaunches it through the Epic Launcher if it wasn't.
+ * Checks if the app was launched through the Epic Games Launcher, and relaunches it through the Epic Games Launcher if it wasn't.
+ *
+ * NOTE: During the call to EOS_Platform_Create, the command line that was used to launch the app is inspected, and if it is
+ * recognized as coming from the Epic Games Launcher, an environment variable is set to 1. The name of the environment variable
+ * is defined by EOS_PLATFORM_CHECKFORLAUNCHERANDRESTART_ENV_VAR.
+ *
+ * You can force the EOS_Platform_CheckForLauncherAndRestart API to relaunch the title by
+ * explicitly unsetting this environment variable before calling EOS_Platform_CheckForLauncherAndRestart.
  *
  * @return An EOS_EResult is returned to indicate success or an error.
  *
@@ -380,3 +420,61 @@ EOS_DECLARE_FUNC(EOS_EResult) EOS_Platform_SetOverrideLocaleCode(EOS_HPlatform H
  * EOS_UnexpectedError is returned if the LauncherCheck module failed to initialize, or the module tried and failed to restart the app.
  */
 EOS_DECLARE_FUNC(EOS_EResult) EOS_Platform_CheckForLauncherAndRestart(EOS_HPlatform Handle);
+
+/**
+ * Windows only.
+ * Checks that the application is ready to use desktop crossplay functionality, with the necessary prerequisites having been met.
+ *
+ * This function verifies that the application was launched through the Bootstrapper application,
+ * the redistributable service has been installed and is running in the background,
+ * and that the overlay has been loaded successfully.
+ *
+ * On Windows, the desktop crossplay functionality is required to use Epic accounts login
+ * with applications that are distributed outside the Epic Games Store.
+ *
+ * @param Options input structure that specifies the API version.
+ * @param OutDesktopCrossplayStatusInfo output structure to receive the desktop crossplay status information.
+ *
+ * @return An EOS_EResult is returned to indicate success or an error.
+ *		   EOS_NotImplemented is returned on non-Windows platforms.
+ */
+EOS_DECLARE_FUNC(EOS_EResult) EOS_Platform_GetDesktopCrossplayStatus(EOS_HPlatform Handle, const EOS_Platform_GetDesktopCrossplayStatusOptions* Options, EOS_Platform_DesktopCrossplayStatusInfo* OutDesktopCrossplayStatusInfo);
+
+/**
+ * Notify a change in application state.
+ *
+ * @note Calling SetApplicationStatus must happen before Tick when foregrounding for the cases where we won't get the background notification.
+ *
+ * @param NewStatus The new status for the application.
+ *
+ * @return An EOS_EResult that indicates whether we changed the application status successfully.
+ *         EOS_Success if the application was changed successfully.
+ *         EOS_InvalidParameters if the value of NewStatus is invalid.
+ *         EOS_NotImplemented if EOS_AS_BackgroundConstrained or EOS_AS_BackgroundUnconstrained are attempted to be set on platforms that do not have such application states.
+ */
+EOS_DECLARE_FUNC(EOS_EResult) EOS_Platform_SetApplicationStatus(EOS_HPlatform Handle, const EOS_EApplicationStatus NewStatus);
+
+/**
+ * Retrieves the current application state as told to the SDK by the application.
+ *
+ * @return The current application status.
+ */
+EOS_DECLARE_FUNC(EOS_EApplicationStatus) EOS_Platform_GetApplicationStatus(EOS_HPlatform Handle);
+
+/**
+ * Notify a change in network state.
+ *
+ * @param NewStatus The new network status.
+ *
+ * @return An EOS_EResult that indicates whether we changed the network status successfully.
+ *         EOS_Success if the network was changed successfully.
+ *         EOS_InvalidParameters if the value of NewStatus is invalid.
+ */
+EOS_DECLARE_FUNC(EOS_EResult) EOS_Platform_SetNetworkStatus(EOS_HPlatform Handle, const EOS_ENetworkStatus NewStatus);
+
+/**
+ * Retrieves the current network state as told to the SDK by the application.
+ *
+ * @return The current network status.
+ */
+EOS_DECLARE_FUNC(EOS_ENetworkStatus) EOS_Platform_GetNetworkStatus(EOS_HPlatform Handle);

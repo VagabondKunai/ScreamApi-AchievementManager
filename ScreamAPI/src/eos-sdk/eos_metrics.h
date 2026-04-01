@@ -8,7 +8,7 @@
  * This data includes active, online instances of the game's client and server, and past sessions played by local players.
  * All Metrics Interface calls take a handle of type EOS_HMetrics as the first parameter.
  * This handle can be retrieved from an EOS_HPlatform handle by using the EOS_Platform_GetMetricsInterface function.
- * 
+ *
  * @see EOS_Platform_GetMetricsInterface
  */
 
@@ -30,7 +30,7 @@ EOS_DECLARE_FUNC(EOS_EResult) EOS_Metrics_BeginPlayerSession(EOS_HMetrics Handle
  * Call once when the game client leaves the active game session.
  * Each call to BeginPlayerSession must be matched with a corresponding call to EndPlayerSession.
  *
- * @param Options Structure containing the Epic Online Services Account ID of the player whose session to end.
+ * @param Options Structure containing the account id of the player whose session to end.
  *
  * @return Returns EOS_Success on success, or an error code if the input parameters are invalid or there was no active session for the player.
  */

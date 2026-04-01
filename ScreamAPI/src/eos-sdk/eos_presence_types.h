@@ -7,8 +7,8 @@
 
 #pragma pack(push, 8)
 
-EXTERN_C typedef struct EOS_PresenceHandle* EOS_HPresence;
-EXTERN_C typedef struct EOS_PresenceModificationHandle* EOS_HPresenceModification;
+EOS_EXTERN_C typedef struct EOS_PresenceHandle* EOS_HPresence;
+EOS_EXTERN_C typedef struct EOS_PresenceModificationHandle* EOS_HPresenceModification;
 
 /**
  * Presence Status states of a user
@@ -47,7 +47,7 @@ EOS_STRUCT(EOS_Presence_DataRecord, (
 ));
 
 
-#define EOS_PRESENCE_INFO_API_LATEST 2
+#define EOS_PRESENCE_INFO_API_LATEST 3
 
 /**
  * All the known presence information for a specific user. This object must be released by calling EOS_Presence_Info_Release.
@@ -60,7 +60,7 @@ EOS_STRUCT(EOS_Presence_Info, (
 	int32_t ApiVersion;
 	/** The status of the user */
 	EOS_Presence_EStatus Status;
-	/** The Epic Online Services Account ID of the user */
+	/** The Epic Account ID of the user */
 	EOS_EpicAccountId UserId;
 	/** The product ID that the user is logged in from */
 	const char* ProductId;
@@ -68,7 +68,7 @@ EOS_STRUCT(EOS_Presence_Info, (
 	const char* ProductVersion;
 	/** The platform of that the user is logged in from */
 	const char* Platform;
-	/** The rich-text of the user */
+	/** Rich text of the user. */
 	const char* RichText;
 	/** The count of records available */
 	int32_t RecordsCount;
@@ -76,6 +76,8 @@ EOS_STRUCT(EOS_Presence_Info, (
 	const EOS_Presence_DataRecord* Records;
 	/** The user-facing name for the product the user is logged in from */
 	const char* ProductName;
+	/** The integrated platform that the user is logged in with */
+	const char* IntegratedPlatform;
 ));
 
 
@@ -87,9 +89,9 @@ EOS_STRUCT(EOS_Presence_Info, (
 EOS_STRUCT(EOS_Presence_QueryPresenceOptions, (
 	/** API Version: Set this to EOS_PRESENCE_QUERYPRESENCE_API_LATEST. */
 	int32_t ApiVersion;
-	/** The Epic Online Services Account ID of the local, logged-in user making the request */
+	/** The Epic Account ID of the local, logged-in user making the request */
 	EOS_EpicAccountId LocalUserId;
-	/** The Epic Online Services Account ID of the user whose presence data you want to retrieve; this value must be either the user making the request, or a friend of that user */
+	/** The Epic Account ID of the user whose presence data you want to retrieve; this value must be either the user making the request, or a friend of that user */
 	EOS_EpicAccountId TargetUserId;
 ));
 
@@ -101,9 +103,9 @@ EOS_STRUCT(EOS_Presence_QueryPresenceCallbackInfo, (
 	EOS_EResult ResultCode;
 	/** Client-specified data passed into EOS_Presence_QueryPresence */
 	void* ClientData;
-	/** The Epic Online Services Account ID of the local user who made this request */
+	/** The Epic Account ID of the local user who made this request */
 	EOS_EpicAccountId LocalUserId;
-	/** The Epic Online Services Account ID of the user whose presence was potentially queried */
+	/** The Epic Account ID of the user whose presence was potentially queried */
 	EOS_EpicAccountId TargetUserId;
 ));
 
@@ -121,23 +123,23 @@ EOS_DECLARE_CALLBACK(EOS_Presence_OnQueryPresenceCompleteCallback, const EOS_Pre
 EOS_STRUCT(EOS_Presence_HasPresenceOptions, (
 	/** API Version: Set this to EOS_PRESENCE_HASPRESENCE_API_LATEST. */
 	int32_t ApiVersion;
-	/** The Epic Online Services Account ID of the local, logged-in user making the request */
+	/** The Epic Account ID of the local, logged-in user making the request */
 	EOS_EpicAccountId LocalUserId;
-	/** The Epic Online Services Account ID of the user whose cached presence data you want to locate */
+	/** The Epic Account ID of the user whose cached presence data you want to locate */
 	EOS_EpicAccountId TargetUserId;
 ));
 
 
-#define EOS_PRESENCE_COPYPRESENCE_API_LATEST 2
+#define EOS_PRESENCE_COPYPRESENCE_API_LATEST 3
 /**
  * Data for the EOS_Presence_CopyPresence function.
  */
 EOS_STRUCT(EOS_Presence_CopyPresenceOptions, (
 	/** API Version: Set this to EOS_PRESENCE_COPYPRESENCE_API_LATEST. */
 	int32_t ApiVersion;
-	/** The Epic Online Services Account ID of the local, logged-in user making the request */
+	/** The Epic Account ID of the local, logged-in user making the request */
 	EOS_EpicAccountId LocalUserId;
-	/** The Epic Online Services Account ID of the user whose cached presence data you want to copy from the cache */
+	/** The Epic Account ID of the user whose cached presence data you want to copy from the cache */
 	EOS_EpicAccountId TargetUserId;
 ));
 
@@ -158,7 +160,7 @@ EOS_DECLARE_FUNC(void) EOS_Presence_Info_Release(EOS_Presence_Info* PresenceInfo
 EOS_STRUCT(EOS_Presence_CreatePresenceModificationOptions, (
 	/** API Version: Set this to EOS_PRESENCE_CREATEPRESENCEMODIFICATION_API_LATEST. */
 	int32_t ApiVersion;
-	/** The Epic Online Services Account ID of the local user's Epic Online Services Account ID */
+	/** The Epic Account ID of the local, logged-in user making the request */
 	EOS_EpicAccountId LocalUserId;
 ));
 
@@ -181,7 +183,7 @@ EOS_DECLARE_FUNC(void) EOS_PresenceModification_Release(EOS_HPresenceModificatio
 EOS_STRUCT(EOS_Presence_SetPresenceOptions, (
 	/** API Version: Set this to EOS_PRESENCE_SETPRESENCE_API_LATEST. */
 	int32_t ApiVersion;
-	/** The Epic Online Services Account ID of the local user's Epic Online Services Account ID */
+	/** The Epic Account ID of the local, logged-in user making the request */
 	EOS_EpicAccountId LocalUserId;
 	/** The handle to the presence update */
 	EOS_HPresenceModification PresenceModificationHandle;
@@ -195,8 +197,11 @@ EOS_STRUCT(EOS_Presence_SetPresenceCallbackInfo, (
 	EOS_EResult ResultCode;
 	/** Client-specified data passed into EOS_Presence_SetPresence */
 	void* ClientData;
-	/** The Epic Online Services Account ID of the local user that had their presence set */
+	/** The Epic Account ID of the local user that had their presence set */
 	EOS_EpicAccountId LocalUserId;
+	/** Result code for the Rich presence operation. EOS_Success is returned if the Rich presence was successfully set, other code indicates an error.
+	 */
+	EOS_EResult RichPresenceResultCode;
 ));
 
 /**
@@ -220,9 +225,9 @@ EOS_STRUCT(EOS_Presence_AddNotifyOnPresenceChangedOptions, (
 EOS_STRUCT(EOS_Presence_PresenceChangedCallbackInfo, (
 	/** Client-specified data passed into EOS_Presence_AddNotifyOnPresenceChanged */
 	void* ClientData;
-	/** The Epic Online Services Account ID of the local user who is being informed for PresenceUserId's presence change */
+	/** The Epic Account ID of the local user who is being informed for PresenceUserId's presence change */
 	EOS_EpicAccountId LocalUserId;
-	/** The Epic Online Services Account ID of the user who had their presence changed */
+	/** The Epic Account ID of the user who had their presence changed */
 	EOS_EpicAccountId PresenceUserId;
 ));
 
@@ -240,16 +245,16 @@ EOS_STRUCT(EOS_Presence_AddNotifyJoinGameAcceptedOptions, (
 EOS_STRUCT(EOS_Presence_JoinGameAcceptedCallbackInfo, (
 	/** Context that was passed into EOS_Presence_AddNotifyJoinGameAccepted */
 	void* ClientData;
-	/** 
+	/**
 	 * The Join Info custom game-data string to use to join the target user.
 	 * Set to a null pointer to delete the value.
 	 */
 	const char* JoinInfo;
-	/** The Epic Online Services Account ID of the user who accepted the invitation */
+	/** The Epic Account ID of the user who accepted the invitation */
 	EOS_EpicAccountId LocalUserId;
-	/** The Epic Online Services Account ID of the user who sent the invitation */
+	/** The Epic Account ID of the user who sent the invitation */
 	EOS_EpicAccountId TargetUserId;
-	/** 
+	/**
 	 * If the value is not EOS_UI_EVENTID_INVALID then it must be passed back to the SDK using EOS_UI_AcknowledgeEventId.
 	 * This should be done after attempting to join the game and either succeeding or failing to connect.
 	 * This is necessary to allow the Social Overlay UI to manage the `Join` button.
@@ -261,7 +266,7 @@ EOS_STRUCT(EOS_Presence_JoinGameAcceptedCallbackInfo, (
  * Function prototype definition for notifications that come from EOS_Presence_AddNotifyJoinGameAccepted
  *
  * @param Data A EOS_Presence_JoinGameAcceptedCallbackInfo containing the output information and result
- * 
+ *
  * @note EOS_UI_AcknowledgeEventId must be called with any valid UiEventId passed via the data.
  */
 EOS_DECLARE_CALLBACK(EOS_Presence_OnJoinGameAcceptedCallback, const EOS_Presence_JoinGameAcceptedCallbackInfo* Data);
@@ -278,9 +283,9 @@ EOS_DECLARE_CALLBACK(EOS_Presence_OnPresenceChangedCallback, const EOS_Presence_
 EOS_STRUCT(EOS_Presence_GetJoinInfoOptions, (
 	/** API Version: Set this to EOS_PRESENCE_GETJOININFO_API_LATEST. */
 	int32_t ApiVersion;
-	/** The local user's Epic Online Services Account ID */
+	/** The local user's Epic Account ID */
 	EOS_EpicAccountId LocalUserId;
-	/** The Epic Online Services Account ID to query for join info; this value must either be a logged-in local user, or a friend of that user */
+	/** The Epic Account ID to query for join info; this value must either be a logged-in local user, or a friend of that user */
 	EOS_EpicAccountId TargetUserId;
 ));
 
@@ -293,7 +298,7 @@ EOS_STRUCT(EOS_Presence_GetJoinInfoOptions, (
 EOS_STRUCT(EOS_PresenceModification_SetJoinInfoOptions, (
 	/** API Version: Set this to EOS_PRESENCEMODIFICATION_SETJOININFO_API_LATEST. */
 	int32_t ApiVersion;
-	/** 
+	/**
 	 * The string which will be advertised as this player's join info.
 	 * An application is expected to freely define the meaning of this string to use for connecting to an active game session.
 	 * The string should not exceed EOS_PRESENCEMODIFICATION_JOININFO_MAX_LENGTH in length.
@@ -334,6 +339,15 @@ EOS_STRUCT(EOS_PresenceModification_SetJoinInfoOptions, (
  * than this.
  */
 #define EOS_PRESENCE_RICH_TEXT_MAX_VALUE_LENGTH 255
+
+/**
+ * The presence key used to specify the local platform's presence string on platforms that use tokenized presence.
+ * For use with EOS_PresenceModification_SetData.
+ *
+ * @see EOS_PresenceModification_SetData
+ * @see EOS_Presence_DataRecord
+ */
+#define EOS_PRESENCE_KEY_PLATFORM_PRESENCE "EOS_PlatformPresence"
 
 /** The most recent version of the EOS_PresenceModification_SetStatus API. */
 #define EOS_PRESENCEMODIFICATION_SETSTATUS_API_LATEST 1

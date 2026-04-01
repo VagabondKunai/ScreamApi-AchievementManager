@@ -7,13 +7,13 @@
 #pragma pack(push, 8)
 
 /** Handle to the lobby interface */
-EXTERN_C typedef struct EOS_LobbyHandle* EOS_HLobby;
+EOS_EXTERN_C typedef struct EOS_LobbyHandle* EOS_HLobby;
 /** Handle to a lobby modification object */
-EXTERN_C typedef struct EOS_LobbyModificationHandle* EOS_HLobbyModification;
+EOS_EXTERN_C typedef struct EOS_LobbyModificationHandle* EOS_HLobbyModification;
 /** Handle to a single lobby */
-EXTERN_C typedef struct EOS_LobbyDetailsHandle* EOS_HLobbyDetails;
+EOS_EXTERN_C typedef struct EOS_LobbyDetailsHandle* EOS_HLobbyDetails;
 /** Handle to the calls responsible for creating a search object */
-EXTERN_C typedef struct EOS_LobbySearchHandle* EOS_HLobbySearch;
+EOS_EXTERN_C typedef struct EOS_LobbySearchHandle* EOS_HLobbySearch;
 
 EOS_DECLARE_FUNC(void) EOS_LobbyModification_Release(EOS_HLobbyModification LobbyModificationHandle);
 
@@ -36,7 +36,7 @@ EOS_DECLARE_FUNC(void) EOS_LobbyDetails_Release(EOS_HLobbyDetails LobbyHandle);
 EOS_DECLARE_FUNC(void) EOS_LobbySearch_Release(EOS_HLobbySearch LobbySearchHandle);
 
 /** All lobbies are referenced by a unique lobby ID */
-EXTERN_C typedef const char* EOS_LobbyId;
+EOS_EXTERN_C typedef const char* EOS_LobbyId;
 
 #define EOS_LOBBY_MAX_LOBBIES 16
 #define EOS_LOBBY_MAX_LOBBY_MEMBERS 64
@@ -64,9 +64,9 @@ EOS_ENUM(EOS_ELobbyPermissionLevel,
 
 /** Advertisement properties for a single attribute associated with a lobby */
 EOS_ENUM(EOS_ELobbyAttributeVisibility,
-	/** Data is visible outside the lobby */
+	/** Data is visible to lobby members, searchable and visible in search results. */
 	EOS_LAT_PUBLIC = 0,
-	/** Only members in the lobby can see this data */
+	/** Data is only visible to the user setting the data. Data is not visible to lobby members, not searchable, and not visible in search results. */
 	EOS_LAT_PRIVATE = 1
 );
 
@@ -85,8 +85,15 @@ EOS_ENUM(EOS_ELobbyMemberStatus,
 	/** The lobby has been closed and user has been removed */
 	EOS_LMS_CLOSED = 5
 );
+/** Defines the type of action to take against RTC room when joining a lobby */
+EOS_ENUM(EOS_ELobbyRTCRoomJoinActionType,
+	/** Join RTC Room as soon as user joins the lobby */
+	EOS_LRRJAT_AutomaticJoin = 0,
+	/** Do not join RTC Room when joining the lobby. User must manually call Join RTC Room */
+	EOS_LRRJAT_ManualJoin = 1
+);
 
-#define EOS_LOBBYDETAILS_INFO_API_LATEST 1
+#define EOS_LOBBYDETAILS_INFO_API_LATEST 3
 
 EOS_STRUCT(EOS_LobbyDetails_Info, (
 	/** API Version: Set this to EOS_LOBBYDETAILS_INFO_API_LATEST. */
@@ -103,17 +110,32 @@ EOS_STRUCT(EOS_LobbyDetails_Info, (
 	uint32_t MaxMembers;
 	/** If true, users can invite others to this lobby */
 	EOS_Bool bAllowInvites;
-	/** The main indexed parameter for this lobby, can be any string (ie "Region:GameMode") */
+	/** The main indexed parameter for this lobby, can be any string (i.e. "Region:GameMode") */
 	const char* BucketId;
 	/** Is host migration allowed */
 	EOS_Bool bAllowHostMigration;
 	/** Was a Real-Time Communication (RTC) room enabled at lobby creation? */
 	EOS_Bool bRTCRoomEnabled;
+	/** Is EOS_Lobby_JoinLobbyById allowed */
+	EOS_Bool bAllowJoinById;
+	/** Does rejoining after being kicked require an invite */
+	EOS_Bool bRejoinAfterKickRequiresInvite;
+	/** If true, this lobby will be associated with the local user's presence information. */
+	EOS_Bool bPresenceEnabled;
+	/**
+	 * Array of platform IDs indicating the player platforms allowed to register with the lobby. Platform IDs are
+	 * found in the EOS header file (eos_common.h) and use the format 'EOS_OPT_<PlatformName>'. For some platforms 
+	 * the value will be in the EOS Platform specific header file. If null, the lobby will be unrestricted.
+	 */
+	const uint32_t* AllowedPlatformIds;
+	/** Number of platform IDs in the array */
+	uint32_t AllowedPlatformIdsCount;
 ));
 
 EOS_DECLARE_FUNC(void) EOS_LobbyDetails_Info_Release(EOS_LobbyDetails_Info* LobbyDetailsInfo);
 
-#define EOS_LOBBY_LOCALRTCOPTIONS_API_LATEST 1
+/** The most recent version of the EOS_Lobby_LocalRTCOptions structure. */
+#define EOS_LOBBY_LOCALRTCOPTIONS_API_LATEST 2
 
 /**
  * Input parameters to use with Lobby RTC Rooms.
@@ -135,15 +157,20 @@ EOS_STRUCT(EOS_Lobby_LocalRTCOptions, (
 	 */
 	EOS_Bool bUseManualAudioOutput;
 	/**
-	 * Set to EOS_TRUE to start the outgoing audio stream muted by when first connecting to the RTC room. It must be manually unmuted with a
-	 * call to EOS_RTCAudio_UpdateSending. If manual audio output is enabled, this value is ignored. The default is EOS_FALSE if this struct
-	 * is not specified.
+	 * Set to EOS_TRUE to start the audio input device's stream as muted when first connecting to the RTC room.
+	 *
+	 * It must be manually unmuted with a call to EOS_RTCAudio_UpdateSending. If manual audio output is enabled, this value is ignored.
+	 * The default value is EOS_FALSE if this struct is not specified.
 	 */
-	EOS_Bool bAudioOutputStartsMuted;
+	EOS_Bool bLocalAudioDeviceInputStartsMuted;
+	/**
+	* Reserved field, should be nullptr by default
+	*/
+	void* Reserved;
 ));
 
 /** The most recent version of the EOS_Lobby_CreateLobby API. */
-#define EOS_LOBBY_CREATELOBBY_API_LATEST 7
+#define EOS_LOBBY_CREATELOBBY_API_LATEST 10
 
 /**
  * Input parameters for the EOS_Lobby_CreateLobby function.
@@ -157,7 +184,8 @@ EOS_STRUCT(EOS_Lobby_CreateLobbyOptions, (
 	uint32_t MaxLobbyMembers;
 	/** The initial permission level of the lobby */
 	EOS_ELobbyPermissionLevel PermissionLevel;
-	/** If true, this lobby will be associated with presence information. A user's presence can only be associated with one lobby at a time.
+	/**
+	 * If true, this lobby will be associated with the local user's presence information. A user's presence can only be associated with one lobby at a time.
 	 * This affects the ability of the Social Overlay to show game related actions to take in the user's social graph.
 	 *
 	 * @note The Social Overlay can handle only one of the following three options at a time:
@@ -167,6 +195,7 @@ EOS_STRUCT(EOS_Lobby_CreateLobbyOptions, (
 	 *
 	 * @see EOS_PresenceModification_SetJoinInfoOptions
 	 * @see EOS_Lobby_JoinLobbyOptions
+	 * @see EOS_Lobby_JoinLobbyByIdOptions
 	 * @see EOS_Sessions_CreateSessionModificationOptions
 	 * @see EOS_Sessions_JoinSessionOptions
 	 */
@@ -175,9 +204,9 @@ EOS_STRUCT(EOS_Lobby_CreateLobbyOptions, (
 	EOS_Bool bAllowInvites;
 	/** Bucket ID associated with the lobby */
 	const char* BucketId;
-	/** 
-	 * Is host migration allowed (will the lobby stay open if the original host leaves?) 
-	 * NOTE: EOS_Lobby_PromoteMember is still allowed regardless of this setting 
+	/**
+	 * Is host migration allowed (will the lobby stay open if the original host leaves?)
+	 * NOTE: EOS_Lobby_PromoteMember is still allowed regardless of this setting
 	 */
 	EOS_Bool bDisableHostMigration;
 	/**
@@ -200,7 +229,40 @@ EOS_STRUCT(EOS_Lobby_CreateLobbyOptions, (
 	 * If not specified the backend service will assign one to the lobby.  Do not mix and match override and non override settings.
 	 * This value can be of size [EOS_LOBBY_MIN_LOBBYIDOVERRIDE_LENGTH, EOS_LOBBY_MAX_LOBBYIDOVERRIDE_LENGTH]
 	 */
-	const char* LobbyId;
+	EOS_LobbyId LobbyId;
+	/**
+	 * Is EOS_Lobby_JoinLobbyById allowed.
+	 * This is provided to support cases where an integrated platform's invite system is used.
+	 * In these cases the game should provide the lobby ID securely to the invited player.  Such as by attaching the
+	 * lobby ID to the integrated platform's session data or sending the lobby ID within the invite data.
+	 */
+	EOS_Bool bEnableJoinById;
+	/**
+	 * Does rejoining after being kicked require an invite?
+	 * When this is set, a kicked player cannot return to the session even if the session was set with
+	 * EOS_LPL_PUBLICADVERTISED.  When this is set, a player with invite privileges must use EOS_Lobby_SendInvite to
+	 * allow the kicked player to return to the session.
+	 */
+	EOS_Bool bRejoinAfterKickRequiresInvite;
+	/** 
+	 * Array of platform IDs indicating the player platforms allowed to register with the session. Platform IDs are
+	 * found in the EOS header file, e.g. EOS_OPT_Epic. For some platforms, the value will be in the EOS Platform specific
+	 * header file. If null, the lobby will be unrestricted.
+	 */
+	const uint32_t* AllowedPlatformIds;
+	/** Number of platform IDs in the array */
+	uint32_t AllowedPlatformIdsCount;
+	/** 
+	* This value indicates whether or not the lobby owner allows crossplay interactions. If false, the lobby owner
+	* will be treated as allowing crossplay. If it is set to true, AllowedPlatformIds must have a single entry that matches 
+	* the platform of the lobby owner.
+	*/
+	EOS_Bool bCrossplayOptOut;
+	/**
+	* If bEnableRTCRoom is true, this value indicates the action to take against the RTC Room when joining the lobby. This may be used 
+	* to indicate the RTCRoom should be joined immediately or manually at a later time.
+	*/
+	EOS_ELobbyRTCRoomJoinActionType RTCRoomJoinActionType;
 ));
 
 /**
@@ -256,7 +318,7 @@ EOS_DECLARE_CALLBACK(EOS_Lobby_OnDestroyLobbyCallback, const EOS_Lobby_DestroyLo
 
 
 /** The most recent version of the EOS_Lobby_JoinLobby API. */
-#define EOS_LOBBY_JOINLOBBY_API_LATEST 3
+#define EOS_LOBBY_JOINLOBBY_API_LATEST 5
 
 /**
  * Input parameters for the EOS_Lobby_JoinLobby function.
@@ -268,7 +330,8 @@ EOS_STRUCT(EOS_Lobby_JoinLobbyOptions, (
 	EOS_HLobbyDetails LobbyDetailsHandle;
 	/** The Product User ID of the local user joining the lobby */
 	EOS_ProductUserId LocalUserId;
-	/** If true, this lobby will be associated with the user's presence information. A user can only associate one lobby at a time with their presence information.
+	/** 
+	 * If true, this lobby will be associated with the local user's presence information. A user can only associate one lobby at a time with their presence information.
 	 * This affects the ability of the Social Overlay to show game related actions to take in the user's social graph.
 	 *
 	 * @note The Social Overlay can handle only one of the following three options at a time:
@@ -289,6 +352,16 @@ EOS_STRUCT(EOS_Lobby_JoinLobbyOptions, (
 	 * the specified lobby does not have an RTC Room enabled and will not cause errors.
 	 */
 	const EOS_Lobby_LocalRTCOptions* LocalRTCOptions;
+	/** 
+	* This value indicates whether or not the local user allows crossplay interactions. If it is false, the local user 
+	* will be treated as allowing crossplay.
+	*/
+	EOS_Bool bCrossplayOptOut;
+	/**
+	* For lobbies with the RTC Room feature enabled, this value indicates the action to take against the RTC Room when joining the lobby. This may be used
+	* to indicate the RTCRoom should be joined immediately or manually at a later time.
+	*/
+	EOS_ELobbyRTCRoomJoinActionType RTCRoomJoinActionType;
 ));
 
 /**
@@ -308,6 +381,71 @@ EOS_STRUCT(EOS_Lobby_JoinLobbyCallbackInfo, (
  * @param Data A EOS_Lobby_JoinLobby CallbackInfo containing the output information and result
  */
 EOS_DECLARE_CALLBACK(EOS_Lobby_OnJoinLobbyCallback, const EOS_Lobby_JoinLobbyCallbackInfo* Data);
+
+/** The most recent version of the EOS_Lobby_JoinLobbyById API. */
+#define EOS_LOBBY_JOINLOBBYBYID_API_LATEST 3
+
+/**
+ * Input parameters for the EOS_Lobby_JoinLobbyById function.
+ */
+EOS_STRUCT(EOS_Lobby_JoinLobbyByIdOptions, (
+	/** API Version: Set this to EOS_LOBBY_JOINLOBBYBYID_API_LATEST. */
+	int32_t ApiVersion;
+	/** The ID of the lobby */
+	EOS_LobbyId LobbyId;
+	/** The Product User ID of the local user joining the lobby */
+	EOS_ProductUserId LocalUserId;
+	/** If true, this lobby will be associated with the user's presence information. A user can only associate one lobby at a time with their presence information.
+	 * This affects the ability of the Social Overlay to show game related actions to take in the user's social graph.
+	 *
+	 * @note The Social Overlay can handle only one of the following three options at a time:
+	 * * using the bPresenceEnabled flags within the Sessions interface
+	 * * using the bPresenceEnabled flags within the Lobby interface
+	 * * using EOS_PresenceModification_SetJoinInfo
+	 *
+	 * @see EOS_PresenceModification_SetJoinInfoOptions
+	 * @see EOS_Lobby_CreateLobbyOptions
+	 * @see EOS_Lobby_JoinLobbyOptions
+	 * @see EOS_Lobby_JoinLobbyByIdOptions
+	 * @see EOS_Sessions_CreateSessionModificationOptions
+	 * @see EOS_Sessions_JoinSessionOptions
+	 */
+	EOS_Bool bPresenceEnabled;
+	/**
+	 * (Optional) Set this value to override the default local options for the RTC Room, if it is enabled for this lobby. Set this to NULL if
+	 * your application does not use the Lobby RTC Rooms feature, or if you would like to use the default settings. This option is ignored if
+	 * the specified lobby does not have an RTC Room enabled and will not cause errors.
+	 */
+	const EOS_Lobby_LocalRTCOptions* LocalRTCOptions;
+	/** 
+	* This value indicates whether or not the local user allows crossplay interactions. If it is false, the local user
+	* will be treated as allowing crossplay.
+	*/
+	EOS_Bool bCrossplayOptOut;
+	/**
+	* For lobbies with the RTC Room feature enabled, this value indicates the action to take against the RTC Room when joining the lobby. This may be used 
+	* to indicate the RTCRoom should be joined immediately or manually at a later time.
+	*/
+	EOS_ELobbyRTCRoomJoinActionType RTCRoomJoinActionType;
+));
+
+/**
+ * Output parameters for the EOS_Lobby_JoinLobbyById function.
+ */
+EOS_STRUCT(EOS_Lobby_JoinLobbyByIdCallbackInfo, (
+	/** The EOS_EResult code for the operation. EOS_Success indicates that the operation succeeded; other codes indicate errors. */
+	EOS_EResult ResultCode;
+	/** Context that was passed into EOS_Lobby_JoinLobbyById */
+	void* ClientData;
+	/** The ID of the lobby */
+	EOS_LobbyId LobbyId;
+));
+
+/**
+ * Function prototype definition for callbacks passed to EOS_Lobby_JoinLobbyById
+ * @param Data A EOS_Lobby_JoinLobbyById CallbackInfo containing the output information and result
+ */
+EOS_DECLARE_CALLBACK(EOS_Lobby_OnJoinLobbyByIdCallback, const EOS_Lobby_JoinLobbyByIdCallbackInfo* Data);
 
 /** The most recent version of the EOS_Lobby_LeaveLobby API. */
 #define EOS_LOBBY_LEAVELOBBY_API_LATEST 1
@@ -388,6 +526,75 @@ EOS_STRUCT(EOS_Lobby_UpdateLobbyCallbackInfo, (
  */
 EOS_DECLARE_CALLBACK(EOS_Lobby_OnUpdateLobbyCallback, const EOS_Lobby_UpdateLobbyCallbackInfo* Data);
 
+/** The most recent version of the EOS_Lobby_JoinRTCRoom API. */
+#define EOS_LOBBY_JOINRTCROOM_API_LATEST 1
+
+/**
+ * Input parameters for the EOS_Lobby_JoinRTCRoom function.
+ */
+EOS_STRUCT(EOS_Lobby_JoinRTCRoomOptions, (
+	/** API Version: Set this to EOS_LOBBY_JOINRTCROOM_API_LATEST. */
+	int32_t ApiVersion;
+	/** The ID of the lobby to join the RTC Room of */
+	EOS_LobbyId LobbyId;
+	/** The Product User ID of the local user in the lobby */
+	EOS_ProductUserId LocalUserId;
+	/**
+	 * Allows the local application to set local audio options for the RTC Room if it is enabled. 
+	 * Only updates audio options when explicitly set; does not provide defaults.
+	 */
+	const EOS_Lobby_LocalRTCOptions* LocalRTCOptions;
+));
+
+/**
+ * Output parameters for the EOS_Lobby_JoinRTCRoom function.
+ */
+EOS_STRUCT(EOS_Lobby_JoinRTCRoomCallbackInfo, (
+	/** The EOS_EResult code for the operation. EOS_Success indicates that the operation succeeded; other codes indicate errors. */
+	EOS_EResult ResultCode;
+	/** Context that was passed into EOS_Lobby_JoinRTCRoom */
+	void* ClientData;
+	/** The ID of the lobby */
+	EOS_LobbyId LobbyId;
+));
+
+/**
+* Function prototype definition for callbacks passed to EOS_Lobby_JoinRTCRoom
+* @param Data A EOS_Lobby_JoinRTCRoom CallbackInfo containing the output information and result
+*/
+EOS_DECLARE_CALLBACK(EOS_Lobby_OnJoinRTCRoomCallback, const EOS_Lobby_JoinRTCRoomCallbackInfo* Data);
+/** The most recent version of the  EOS_Lobby_LeaveRTCRoom API. */
+#define EOS_LOBBY_LEAVERTCROOM_API_LATEST 1
+
+/**
+ * Input parameters for the EOS_Lobby_LeaveRTCRoom function.
+ */
+EOS_STRUCT(EOS_Lobby_LeaveRTCRoomOptions, (
+	/** API Version: Set this to EOS_LOBBY_LEAVERTCROOM_API_LATEST. */
+	int32_t ApiVersion;
+	/** The ID of the lobby owning the RTC Room to leave */
+	EOS_LobbyId LobbyId;
+	/** The Product User ID of the local user in the lobby */
+	EOS_ProductUserId LocalUserId;
+));
+/**
+ * Output parameters for the EOS_Lobby_LeaveRTCRoom function.
+ */
+EOS_STRUCT(EOS_Lobby_LeaveRTCRoomCallbackInfo, (
+	/** The EOS_EResult code for the operation. EOS_Success indicates that the operation succeeded; other codes indicate errors. */
+	EOS_EResult ResultCode;
+	/** Context that was passed into EOS_Lobby_LeaveRTCRoom */
+	void* ClientData;
+	/** The ID of the lobby */
+	EOS_LobbyId LobbyId;
+));
+
+/**
+ * Function prototype definition for callbacks passed to EOS_Lobby_LeaveRTCRoom
+ * @param Data A EOS_Lobby_LeaveRTCRoom CallbackInfo containing the output information and result
+ */
+EOS_DECLARE_CALLBACK(EOS_Lobby_OnLeaveRTCRoomCallback, const EOS_Lobby_LeaveRTCRoomCallbackInfo* Data);
+
 /** The most recent version of the EOS_Lobby_PromoteMember API. */
 #define EOS_LOBBY_PROMOTEMEMBER_API_LATEST 1
 
@@ -458,6 +665,45 @@ EOS_STRUCT(EOS_Lobby_KickMemberCallbackInfo, (
  * @param Data A EOS_Lobby_KickMember CallbackInfo containing the output information and result
  */
 EOS_DECLARE_CALLBACK(EOS_Lobby_OnKickMemberCallback, const EOS_Lobby_KickMemberCallbackInfo* Data);
+
+/** The most recent version of the EOS_Lobby_HardMuteMember API. */
+#define EOS_LOBBY_HARDMUTEMEMBER_API_LATEST 1
+
+/**
+ * Input parameters for the EOS_Lobby_HardMuteMember function.
+ */
+EOS_STRUCT(EOS_Lobby_HardMuteMemberOptions, (
+	/** API Version: Set this to EOS_LOBBY_HARDMUTEMEMBER_API_LATEST. */
+	int32_t ApiVersion;
+	/** The ID of the lobby */
+	EOS_LobbyId LobbyId;
+	/** The Product User ID of the local user requesting the hard mute; this user must be the lobby owner */
+	EOS_ProductUserId LocalUserId;
+	/** The Product User ID of the lobby member to hard mute */
+	EOS_ProductUserId TargetUserId;
+	/** TargetUserId hard mute status (mute on or off) */
+	EOS_Bool bHardMute;
+));
+
+/**
+ * Output parameters for the EOS_Lobby_HardMuteMember function.
+ */
+EOS_STRUCT(EOS_Lobby_HardMuteMemberCallbackInfo, (
+	/** The EOS_EResult code for the operation. EOS_Success indicates that the operation succeeded; other codes indicate errors. */
+	EOS_EResult ResultCode;
+	/** Context that was passed into EOS_Lobby_HardMuteMember */
+	void* ClientData;
+	/** The ID of the lobby */
+	EOS_LobbyId LobbyId;
+	/** The Product User ID of the lobby member whose mute status has been updated */
+	EOS_ProductUserId TargetUserId;
+));
+
+/**
+ * Function prototype definition for callbacks passed to EOS_Lobby_HardMuteMember
+ * @param Data A EOS_Lobby_HardMuteMember CallbackInfo containing the output information and result
+ */
+EOS_DECLARE_CALLBACK(EOS_Lobby_OnHardMuteMemberCallback, const EOS_Lobby_HardMuteMemberCallbackInfo* Data);
 
 /** The most recent version of the EOS_Lobby_AddNotifyLobbyUpdateReceived API. */
 #define EOS_LOBBY_ADDNOTIFYLOBBYUPDATERECEIVED_API_LATEST 1
@@ -595,7 +841,7 @@ EOS_STRUCT(EOS_Lobby_LobbyInviteAcceptedCallbackInfo, (
 	/** The Product User ID of the user who sent the invitation */
 	EOS_ProductUserId TargetUserId;
 	/** Lobby ID that the user has been invited to */
-	const char* LobbyId;
+	EOS_LobbyId LobbyId;
 ));
 
 /**
@@ -613,6 +859,37 @@ EOS_STRUCT(EOS_Lobby_AddNotifyJoinLobbyAcceptedOptions, (
 	int32_t ApiVersion;
 ));
 
+/** The most recent version of the EOS_Lobby_AddNotifyLobbyInviteRejected API. */
+#define EOS_LOBBY_ADDNOTIFYLOBBYINVITEREJECTED_API_LATEST 1
+
+EOS_STRUCT(EOS_Lobby_AddNotifyLobbyInviteRejectedOptions, (
+	/** API Version: Set this to EOS_LOBBY_ADDNOTIFYLOBBYINVITEREJECTED_API_LATEST. */
+	int32_t ApiVersion;
+));
+
+/**
+ * Output parameters for the EOS_Lobby_OnLobbyInviteRejectedCallback Function.
+ */
+EOS_STRUCT(EOS_Lobby_LobbyInviteRejectedCallbackInfo, (
+	/** Context that was passed into EOS_Lobby_AddNotifyLobbyInviteRejected */
+	void* ClientData;
+	/** The invite ID */
+	const char* InviteId;
+	/** The Product User ID of the local user who received the invitation */
+	EOS_ProductUserId LocalUserId;
+	/** The Product User ID of the user who sent the invitation */
+	EOS_ProductUserId TargetUserId;
+	/** Lobby ID that the user has been invited to */
+	EOS_LobbyId LobbyId;
+));
+
+/**
+ * Function prototype definition for notifications that comes from EOS_Lobby_AddNotifyLobbyInviteRejected
+ *
+ * @param Data A EOS_Lobby_LobbyInviteRejectedCallbackInfo containing the output information and result
+ */
+EOS_DECLARE_CALLBACK(EOS_Lobby_OnLobbyInviteRejectedCallback, const EOS_Lobby_LobbyInviteRejectedCallbackInfo* Data);
+
 /**
  * Output parameters for the EOS_Lobby_OnJoinLobbyAcceptedCallback Function.
  */
@@ -621,7 +898,7 @@ EOS_STRUCT(EOS_Lobby_JoinLobbyAcceptedCallbackInfo, (
 	void* ClientData;
 	/** The Product User ID of the local user who is joining */
 	EOS_ProductUserId LocalUserId;
-	/** 
+	/**
 	 * The UI Event associated with this Join Game event.
 	 * This should be used with EOS_Lobby_CopyLobbyDetailsHandleByUiEventId to get a handle to be used
 	 * when calling EOS_Lobby_JoinLobby.
@@ -640,6 +917,49 @@ EOS_STRUCT(EOS_Lobby_JoinLobbyAcceptedCallbackInfo, (
  * @see EOS_Lobby_JoinLobby
  */
 EOS_DECLARE_CALLBACK(EOS_Lobby_OnJoinLobbyAcceptedCallback, const EOS_Lobby_JoinLobbyAcceptedCallbackInfo* Data);
+
+/** The most recent version of the EOS_Lobby_AddNotifySendLobbyNativeInviteRequested API. */
+#define EOS_LOBBY_ADDNOTIFYSENDLOBBYNATIVEINVITEREQUESTED_API_LATEST 1
+
+EOS_STRUCT(EOS_Lobby_AddNotifySendLobbyNativeInviteRequestedOptions, (
+	/** API Version: Set this to EOS_LOBBY_ADDNOTIFYSENDLOBBYNATIVEINVITEREQUESTED_API_LATEST. */
+	int32_t ApiVersion;
+));
+
+/**
+ * Output parameters for the EOS_Lobby_OnSendLobbyNativeInviteRequestedCallback Function.
+ */
+EOS_STRUCT(EOS_Lobby_SendLobbyNativeInviteRequestedCallbackInfo, (
+	/** Context that was passed into EOS_Lobby_AddNotifySendLobbyNativeInviteRequested */
+	void* ClientData;
+	/**
+	 * Identifies this event which will need to be acknowledged with EOS_UI_AcknowledgeEventId().
+	 * @see EOS_UI_AcknowledgeEventId
+	 */
+	EOS_UI_EventId UiEventId;
+	/** The Product User ID of the local user who is inviting. */
+	EOS_ProductUserId LocalUserId;
+	/**
+	 * The Native Platform Account Type. If only a single integrated platform is configured then
+	 * this will always reference that platform.
+	 */
+	EOS_IntegratedPlatformType TargetNativeAccountType;
+	/** The Native Platform Account ID of the target user being invited. */
+	const char* TargetUserNativeAccountId;
+	/** Lobby ID that the user is being invited to */
+	EOS_LobbyId LobbyId;
+));
+
+/**
+ * Function prototype definition for notifications that comes from EOS_Lobby_AddNotifySendLobbyNativeInviteRequested
+ *
+ * @param Data A EOS_Lobby_SendLobbyNativeInviteRequestedCallbackInfo containing the output information and result
+ *
+ * @note After processing the callback EOS_UI_AcknowledgeEventId must be called.
+ *
+ * @see EOS_UI_AcknowledgeEventId
+ */
+EOS_DECLARE_CALLBACK(EOS_Lobby_OnSendLobbyNativeInviteRequestedCallback, const EOS_Lobby_SendLobbyNativeInviteRequestedCallbackInfo* Data);
 
 
 /** The most recent version of the EOS_Lobby_CopyLobbyDetailsHandleByInviteId API. */
@@ -832,7 +1152,7 @@ EOS_STRUCT(EOS_Lobby_CopyLobbyDetailsHandleOptions, (
  * Input parameters for the EOS_Lobby_GetRTCRoomName function.
  */
 EOS_STRUCT(EOS_Lobby_GetRTCRoomNameOptions, (
-	/** API Version: Set this to EOS_LOBBY_GETRTCROOMNAME_API_LATEST */
+	/** API Version: Set this to EOS_LOBBY_GETRTCROOMNAME_API_LATEST. */
 	int32_t ApiVersion;
 	/** The ID of the lobby to get the RTC Room name for */
 	EOS_LobbyId LobbyId;
@@ -845,7 +1165,7 @@ EOS_STRUCT(EOS_Lobby_GetRTCRoomNameOptions, (
 #define EOS_LOBBY_ISRTCROOMCONNECTED_API_LATEST 1
 
 EOS_STRUCT(EOS_Lobby_IsRTCRoomConnectedOptions, (
-	/** API Version: Set this to EOS_LOBBY_ISRTCROOMCONNECTED_API_LATEST */
+	/** API Version: Set this to EOS_LOBBY_ISRTCROOMCONNECTED_API_LATEST. */
 	int32_t ApiVersion;
 	/** The ID of the lobby to get the RTC Room name for */
 	EOS_LobbyId LobbyId;
@@ -855,18 +1175,22 @@ EOS_STRUCT(EOS_Lobby_IsRTCRoomConnectedOptions, (
 
 
 /** The most recent version of the EOS_Lobby_AddNotifyRTCRoomConnectionChanged API. */
-#define EOS_LOBBY_ADDNOTIFYRTCROOMCONNECTIONCHANGED_API_LATEST 1
+#define EOS_LOBBY_ADDNOTIFYRTCROOMCONNECTIONCHANGED_API_LATEST 2
 
 /**
  * Input parameters for the EOS_Lobby_AddNotifyRTCRoomConnectionChanged function.
  */
 EOS_STRUCT(EOS_Lobby_AddNotifyRTCRoomConnectionChangedOptions, (
-	/** API Version: Set this to EOS_LOBBY_ADDNOTIFYRTCROOMCONNECTIONCHANGED_API_LATEST */
+	/** API Version: Set this to EOS_LOBBY_ADDNOTIFYRTCROOMCONNECTIONCHANGED_API_LATEST. */
 	int32_t ApiVersion;
-	/** The ID of the lobby to receive RTC Room connection change notifications for */
-	EOS_LobbyId LobbyId;
-	/** The Product User ID of the local user in the lobby */
-	EOS_ProductUserId LocalUserId;
+	/** The ID of the lobby to receive RTC Room connection change notifications for
+	 * This is deprecated and no longer needed. The notification is raised for any LobbyId or LocalUserId. If any filtering is required, the callback struct (EOS_Lobby_RTCRoomConnectionChangedCallbackInfo) has both a LobbyId and LocalUserId field.
+	 **/
+	EOS_LobbyId LobbyId_DEPRECATED;
+	/** The Product User ID of the local user in the lobby
+	 * This is deprecated and no longer needed. The notification is raised for any LobbyId or LocalUserId. If any filtering is required, the callback struct (EOS_Lobby_RTCRoomConnectionChangedCallbackInfo) has both a LobbyId and LocalUserId field.
+	 **/
+	EOS_ProductUserId LocalUserId_DEPRECATED;
 ));
 
 EOS_STRUCT(EOS_Lobby_RTCRoomConnectionChangedCallbackInfo, (
@@ -902,7 +1226,7 @@ EOS_DECLARE_CALLBACK(EOS_Lobby_OnRTCRoomConnectionChangedCallback, const EOS_Lob
 
 /** Search for a matching bucket ID (value is string) */
 #define EOS_LOBBY_SEARCH_BUCKET_ID "bucket"
-/** Search for lobbies that contain at least this number of members (value is int)  */
+/** Search for lobbies that contain at least this number of members (value is int) */
 #define EOS_LOBBY_SEARCH_MINCURRENTMEMBERS "mincurrentmembers"
 /** Search for a match with min free space (value is int) */
 #define EOS_LOBBY_SEARCH_MINSLOTSAVAILABLE "minslotsavailable"
@@ -926,7 +1250,7 @@ EOS_STRUCT(EOS_Lobby_AttributeData, (
 		double AsDouble;
 		/** Stored as a boolean */
 		EOS_Bool AsBool;
-		/** Stored as a null terminated UTF8 string */
+		/** Stored as a null terminated UTF8 string. Should not be nullptr */
 		const char* AsUtf8;
 	} Value;
 
@@ -951,6 +1275,40 @@ EOS_STRUCT(EOS_Lobby_Attribute, (
 ));
 
 EOS_DECLARE_FUNC(void) EOS_Lobby_Attribute_Release(EOS_Lobby_Attribute* LobbyAttribute);
+
+/** The most recent version of the EOS_Lobby_GetConnectString API. */
+#define EOS_LOBBY_GETCONNECTSTRING_API_LATEST 1
+
+/** The buffer size to provide to the  EOS_Lobby_GetConnectString API. */
+#define EOS_LOBBY_GETCONNECTSTRING_BUFFER_SIZE 256
+
+/**
+ * Input parameters for the EOS_Lobby_GetConnectString function.
+ */
+EOS_STRUCT(EOS_Lobby_GetConnectStringOptions, (
+	/** API Version: Set this to EOS_LOBBY_GETCONNECTSTRING_API_LATEST. */
+	int32_t ApiVersion;
+	/** The Product User ID of the local user requesting the connection string generated from the lobby; this user must currently own the lobby */
+	EOS_ProductUserId LocalUserId;
+	/** The ID of the lobby to generate a connection string for */
+	EOS_LobbyId LobbyId;
+));
+
+/** The most recent version of the EOS_Lobby_ParseConnectString API. */
+#define EOS_LOBBY_PARSECONNECTSTRING_API_LATEST 1
+
+/** The buffer size to provide to the EOS_Lobby_ParseConnectString API. */
+#define EOS_LOBBY_PARSECONNECTSTRING_BUFFER_SIZE 256
+
+/**
+ * Input parameters for the EOS_Lobby_GetConnectString function.
+ */
+EOS_STRUCT(EOS_Lobby_ParseConnectStringOptions, (
+	/** API Version: Set this to EOS_LOBBY_PARSECONNECTSTRING_API_LATEST. */
+	int32_t ApiVersion;
+	/** The connection string to parse */
+	const char* ConnectString;
+));
 
 /** The most recent version of the EOS_LobbyModification_SetBucketId API. */
 #define EOS_LOBBYMODIFICATION_SETBUCKETID_API_LATEST 1
@@ -1005,7 +1363,7 @@ EOS_STRUCT(EOS_LobbyModification_SetInvitesAllowedOptions, (
 ));
 
 /** The most recent version of the EOS_LobbyModification_AddAttribute API. */
-#define EOS_LOBBYMODIFICATION_ADDATTRIBUTE_API_LATEST 1
+#define EOS_LOBBYMODIFICATION_ADDATTRIBUTE_API_LATEST 2
 
 /**
  * Input parameters for the EOS_LobbyModification_AddAttribute function.
@@ -1034,7 +1392,7 @@ EOS_STRUCT(EOS_LobbyModification_RemoveAttributeOptions, (
 ));
 
 /** The most recent version of the EOS_LobbyModification_AddMemberAttribute API. */
-#define EOS_LOBBYMODIFICATION_ADDMEMBERATTRIBUTE_API_LATEST 1
+#define EOS_LOBBYMODIFICATION_ADDMEMBERATTRIBUTE_API_LATEST 2
 
 /**
  * Input parameters for the EOS_LobbyModification_AddMemberAttribute function.
@@ -1059,6 +1417,25 @@ EOS_STRUCT(EOS_LobbyModification_RemoveMemberAttributeOptions, (
 	int32_t ApiVersion;
 	/** Name of the key */
 	const char* Key;
+));
+
+/** The most recent version of the EOS_LobbyModification_SetAllowedPlatformIds API. */
+#define EOS_LOBBYMODIFICATION_SETALLOWEDPLATFORMIDS_API_LATEST 1
+
+/**
+ * Input parameters for the EOS_LobbyModification_SetAllowedPlatformIdsOptions function.
+ */
+EOS_STRUCT(EOS_LobbyModification_SetAllowedPlatformIdsOptions, (
+	/** API Version: Set this to EOS_LOBBYMODIFICATION_SETALLOWEDPLATFORMIDS_API_LATEST. */
+	int32_t ApiVersion;
+	/**
+	 * Array of platform IDs indicating the player platforms allowed to register with the lobby. Platform IDs are
+	 * found in the EOS header file (eos_common.h) and use the format 'EOS_OPT_<PlatformName>'. For some platforms
+	 * the value will be in the EOS Platform specific header file. If null, the lobby will be unrestricted.
+	 */
+	const uint32_t* AllowedPlatformIds;
+	/** Number of platform IDs in the array */
+	uint32_t AllowedPlatformIdsCount;
 ));
 
 /** The most recent version of the EOS_LobbyDetails_GetLobbyOwner API. */
@@ -1317,5 +1694,61 @@ EOS_STRUCT(EOS_LobbySearch_CopySearchResultByIndexOptions, (
 	 */
 	uint32_t LobbyIndex;
 ));
+
+/** The most recent version of the EOS_LobbyDetails_CopyMemberInfo API. */
+#define EOS_LOBBYDETAILS_COPYMEMBERINFO_API_LATEST 1
+
+/**
+ * Input parameters for the EOS_LobbyDetails_CopyMemberInfo function.
+ */
+EOS_STRUCT(EOS_LobbyDetails_CopyMemberInfoOptions, (
+	/** API Version: Set this to EOS_LOBBYDETAILS_COPYMEMBERINFO_API_LATEST. */
+	int32_t ApiVersion;
+	/** The Product User ID of the lobby member to copy. */
+	EOS_ProductUserId TargetUserId;
+));
+
+/** The most recent version of the EOS_LobbyDetails_MemberInfo API. */
+#define EOS_LOBBYDETAILS_MEMBERINFO_API_LATEST 1
+
+EOS_STRUCT(EOS_LobbyDetails_MemberInfo, (
+	/** API Version: Set this to EOS_LOBBYDETAILS_MEMBERINFO_API_LATEST. */
+	int32_t ApiVersion;
+	/** The Product User ID of the lobby member. */
+	EOS_ProductUserId UserId;
+	/** The platform of the lobby member. */
+	EOS_OnlinePlatformType Platform;
+	/** Does this member allow crossplay */
+	EOS_Bool bAllowsCrossplay;
+));
+
+EOS_DECLARE_FUNC(void) EOS_LobbyDetails_MemberInfo_Release(EOS_LobbyDetails_MemberInfo* LobbyDetailsMemberInfo);
+
+/** The most recent version of the EOS_Lobby_AddNotifyLeaveLobbyRequested API. */
+#define EOS_LOBBY_ADDNOTIFYLEAVELOBBYREQUESTED_API_LATEST 1
+
+EOS_STRUCT(EOS_Lobby_AddNotifyLeaveLobbyRequestedOptions, (
+	/** API Version: Set this to EOS_LOBBY_ADDNOTIFYLEAVELOBBYREQUESTED_API_LATEST. */
+	int32_t ApiVersion;
+));
+
+/**
+ * Output parameters for the EOS_Lobby_OnLeaveLobbyRequestedCallback Function.
+ */
+EOS_STRUCT(EOS_Lobby_LeaveLobbyRequestedCallbackInfo, (
+	/** Context that was passed into EOS_Lobby_OnLeaveLobbyRequestedCallback */
+	void* ClientData;
+	/** The Product User ID of the local user who received the leave lobby notification. */
+	EOS_ProductUserId LocalUserId;
+	/** Lobby ID associated with the leave lobby request. */
+	EOS_LobbyId LobbyId;
+));
+
+/**
+ * Function prototype definition for notifications that comes from EOS_Lobby_AddNotifyLeaveLobbyRequested.
+ *
+ * @param Data A pointer to EOS_Lobby_LeaveLobbyRequestedCallbackInfo containing the output information.
+ */
+EOS_DECLARE_CALLBACK(EOS_Lobby_OnLeaveLobbyRequestedCallback, const EOS_Lobby_LeaveLobbyRequestedCallbackInfo* Data);
 
 #pragma pack(pop)

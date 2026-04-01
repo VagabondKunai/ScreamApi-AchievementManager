@@ -16,12 +16,24 @@
 /**
  * Query the ownership status for a given list of catalog item IDs defined with Epic Online Services.
  * This data will be cached for a limited time and retrieved again from the backend when necessary
+ * Depending on the number of catalog item ids passed, the SDK splits the query into smaller batch requests to the backend and aggregates the result.
+ * Note: If one of the request batches fails, no data is cached and the entire query is marked as failed.
  *
  * @param Options structure containing the account and catalog item IDs to retrieve
  * @param ClientData arbitrary data that is passed back to you in the CompletionDelegate
  * @param CompletionDelegate a callback that is fired when the async operation completes, either successfully or in error
  */
 EOS_DECLARE_FUNC(void) EOS_Ecom_QueryOwnership(EOS_HEcom Handle, const EOS_Ecom_QueryOwnershipOptions* Options, void* ClientData, const EOS_Ecom_OnQueryOwnershipCallback CompletionDelegate);
+
+/**
+ * Query the ownership status of all catalog item IDs under the given list of Sandbox IDs defined with Epic Online Services.
+ * This data will be cached for a limited time and retrieved again from the backend when necessary.
+ *
+ * @param Options structure containing the account and Sandbox IDs to retrieve.
+ * @param ClientData arbitrary data that is passed back to you in the CompletionDelegate.
+ * @param CompletionDelegate a callback that is fired when the async operation completes, either successfully or in error.
+ */
+EOS_DECLARE_FUNC(void) EOS_Ecom_QueryOwnershipBySandboxIds(EOS_HEcom Handle, const EOS_Ecom_QueryOwnershipBySandboxIdsOptions* Options, void* ClientData, const EOS_Ecom_OnQueryOwnershipBySandboxIdsCallback CompletionDelegate);
 
 /**
  * Query the ownership status for a given list of catalog item IDs defined with Epic Online Services.
@@ -37,14 +49,28 @@ EOS_DECLARE_FUNC(void) EOS_Ecom_QueryOwnershipToken(EOS_HEcom Handle, const EOS_
  * Query the entitlement information defined with Epic Online Services.
  * A set of entitlement names can be provided to filter the set of entitlements associated with the account.
  * This data will be cached for a limited time and retrieved again from the backend when necessary.
+ * Depending on the number of entitlements passed, the SDK splits the query into smaller batch requests to the backend and aggregates the result.
+ * Note: If one of the request batches fails, no data is cached and the entire query is marked as failed.
  * Use EOS_Ecom_CopyEntitlementByIndex, EOS_Ecom_CopyEntitlementByNameAndIndex, and EOS_Ecom_CopyEntitlementById to get the entitlement details.
  * Use EOS_Ecom_GetEntitlementsByNameCount to retrieve the number of entitlements with a specific entitlement name.
+ * Note: If a durable item is queried used the QueryEntitlements API, the callback returns with a EOS_InvalidRequest result code. Durable item ownership should be queried using the EOS_Ecom_QueryOwnership API.
  *
  * @param Options structure containing the account and entitlement names to retrieve
  * @param ClientData arbitrary data that is passed back to you in the CompletionDelegate
  * @param CompletionDelegate a callback that is fired when the async operation completes, either successfully or in error
  */
 EOS_DECLARE_FUNC(void) EOS_Ecom_QueryEntitlements(EOS_HEcom Handle, const EOS_Ecom_QueryEntitlementsOptions* Options, void* ClientData, const EOS_Ecom_OnQueryEntitlementsCallback CompletionDelegate);
+
+/**
+ * Query the entitlement verification status defined with Epic Online Services.
+ * An optional set of entitlement names can be provided to filter the set of entitlements associated with the account.
+ * The data is return via the callback in the form of a signed JWT that should be verified by an external backend server using a public key for authenticity.
+ *
+ * @param Options structure containing the account and catalog item IDs to retrieve in token form
+ * @param ClientData arbitrary data that is passed back to you in the CompletionDelegate
+ * @param CompletionDelegate a callback that is fired when the async operation completes, either successfully or in error
+ */
+EOS_DECLARE_FUNC(void) EOS_Ecom_QueryEntitlementToken(EOS_HEcom Handle, const EOS_Ecom_QueryEntitlementTokenOptions* Options, void* ClientData, const EOS_Ecom_OnQueryEntitlementTokenCallback CompletionDelegate);
 
 /**
  * Query for a list of catalog offers defined with Epic Online Services.
@@ -81,9 +107,38 @@ EOS_DECLARE_FUNC(void) EOS_Ecom_Checkout(EOS_HEcom Handle, const EOS_Ecom_Checko
 EOS_DECLARE_FUNC(void) EOS_Ecom_RedeemEntitlements(EOS_HEcom Handle, const EOS_Ecom_RedeemEntitlementsOptions* Options, void* ClientData, const EOS_Ecom_OnRedeemEntitlementsCallback CompletionDelegate);
 
 /**
+ * Fetch the number of entitlements that were redeemed during the last EOS_Ecom_RedeemEntitlements call.
+ *
+ * @param Options structure containing the Epic Account ID
+ *
+ * @see EOS_Ecom_CopyLastRedeemedEntitlementByIndex
+ *
+ * @return the number of the redeemed entitlements.
+ */
+EOS_DECLARE_FUNC(uint32_t) EOS_Ecom_GetLastRedeemedEntitlementsCount(EOS_HEcom Handle, const EOS_Ecom_GetLastRedeemedEntitlementsCountOptions* Options);
+
+/**
+ * Fetches a redeemed entitlement id from a given index.
+ * Only entitlements that were redeemed during the last EOS_Ecom_RedeemEntitlements call can be copied.
+ *
+ * @param Options structure containing the Epic Account ID and index being accessed
+ * @param OutRedeemedEntitlementId The ID of the redeemed entitlement. Must be long enough to hold a string of EOS_ECOM_ENTITLEMENTID_MAX_LENGTH.
+ * @param InOutRedeemedEntitlementIdLength The size of the OutRedeemedEntitlementId in characters.
+ *										   The input buffer should include enough space to be null-terminated.
+ *										   When the function returns, this parameter will be filled with the length of the string copied into OutRedeemedEntitlementId.
+ *
+ * @return EOS_Success if the information is available and passed out in OutRedeemedEntitlementId
+ *         EOS_InvalidParameters if you pass a null pointer for the out parameter
+ *         EOS_NotFound if the entitlement id is not found
+ *
+ * @see EOS_ECOM_ENTITLEMENTID_MAX_LENGTH
+ */
+EOS_DECLARE_FUNC(EOS_EResult) EOS_Ecom_CopyLastRedeemedEntitlementByIndex(EOS_HEcom Handle, const EOS_Ecom_CopyLastRedeemedEntitlementByIndexOptions* Options, char* OutRedeemedEntitlementId, int32_t* InOutRedeemedEntitlementIdLength);
+
+/**
  * Fetch the number of entitlements that are cached for a given local user.
  *
- * @param Options structure containing the Epic Online Services Account ID being accessed
+ * @param Options structure containing the Epic Account ID being accessed
  *
  * @see EOS_Ecom_CopyEntitlementByIndex
  *
@@ -94,7 +149,7 @@ EOS_DECLARE_FUNC(uint32_t) EOS_Ecom_GetEntitlementsCount(EOS_HEcom Handle, const
 /**
  * Fetch the number of entitlements with the given Entitlement Name that are cached for a given local user.
  *
- * @param Options structure containing the Epic Online Services Account ID and name being accessed
+ * @param Options structure containing the Epic Account ID and name being accessed
  *
  * @see EOS_Ecom_CopyEntitlementByNameAndIndex
  *
@@ -105,7 +160,7 @@ EOS_DECLARE_FUNC(uint32_t) EOS_Ecom_GetEntitlementsByNameCount(EOS_HEcom Handle,
 /**
  * Fetches an entitlement from a given index.
  *
- * @param Options structure containing the Epic Online Services Account ID and index being accessed
+ * @param Options structure containing the Epic Account ID and index being accessed
  * @param OutEntitlement the entitlement for the given index, if it exists and is valid, use EOS_Ecom_Entitlement_Release when finished
  *
  * @see EOS_Ecom_Entitlement_Release
@@ -122,7 +177,7 @@ EOS_DECLARE_FUNC(EOS_EResult) EOS_Ecom_CopyEntitlementByIndex(EOS_HEcom Handle, 
  * entitlements among those with the same Entitlement Name.  The Index can be a value from 0 to
  * one less than the result from EOS_Ecom_GetEntitlementsByNameCount.
  *
- * @param Options structure containing the Epic Online Services Account ID, entitlement name, and index being accessed
+ * @param Options structure containing the Epic Account ID, entitlement name, and index being accessed
  * @param OutEntitlement the entitlement for the given name index pair, if it exists and is valid, use EOS_Ecom_Entitlement_Release when finished
  *
  * @see EOS_Ecom_Entitlement_Release
@@ -137,7 +192,7 @@ EOS_DECLARE_FUNC(EOS_EResult) EOS_Ecom_CopyEntitlementByNameAndIndex(EOS_HEcom H
 /**
  * Fetches the entitlement with the given ID.
  *
- * @param Options structure containing the Epic Online Services Account ID and entitlement ID being accessed
+ * @param Options structure containing the Epic Account ID and entitlement ID being accessed
  * @param OutEntitlement the entitlement for the given ID, if it exists and is valid, use EOS_Ecom_Entitlement_Release when finished
  *
  * @see EOS_Ecom_CopyEntitlementByNameAndIndex
@@ -153,7 +208,7 @@ EOS_DECLARE_FUNC(EOS_EResult) EOS_Ecom_CopyEntitlementById(EOS_HEcom Handle, con
 /**
  * Fetch the number of offers that are cached for a given local user.
  *
- * @param Options structure containing the Epic Online Services Account ID being accessed
+ * @param Options structure containing the Epic Account ID being accessed
  *
  * @see EOS_Ecom_CopyOfferByIndex
  *
@@ -164,7 +219,7 @@ EOS_DECLARE_FUNC(uint32_t) EOS_Ecom_GetOfferCount(EOS_HEcom Handle, const EOS_Ec
 /**
  * Fetches an offer from a given index.  The pricing and text are localized to the provided account.
  *
- * @param Options structure containing the Epic Online Services Account ID and index being accessed
+ * @param Options structure containing the Epic Account ID and index being accessed
  * @param OutOffer the offer for the given index, if it exists and is valid, use EOS_Ecom_CatalogOffer_Release when finished
  *
  * @see EOS_Ecom_CatalogOffer_Release
@@ -181,7 +236,7 @@ EOS_DECLARE_FUNC(EOS_EResult) EOS_Ecom_CopyOfferByIndex(EOS_HEcom Handle, const 
 /**
  * Fetches an offer with a given ID.  The pricing and text are localized to the provided account.
  *
- * @param Options structure containing the Epic Online Services Account ID and offer ID being accessed
+ * @param Options structure containing the Epic Account ID and offer ID being accessed
  * @param OutOffer the offer for the given index, if it exists and is valid, use EOS_Ecom_CatalogOffer_Release when finished
  *
  * @see EOS_Ecom_CatalogOffer_Release
@@ -205,7 +260,7 @@ EOS_DECLARE_FUNC(uint32_t) EOS_Ecom_GetOfferItemCount(EOS_HEcom Handle, const EO
 /**
  * Fetches an item from a given index.
  *
- * @param Options structure containing the Epic Online Services Account ID and index being accessed
+ * @param Options structure containing the Epic Account ID and index being accessed
  * @param OutItem the item for the given index, if it exists and is valid, use EOS_Ecom_CatalogItem_Release when finished
  *
  * @see EOS_Ecom_CatalogItem_Release
@@ -315,7 +370,7 @@ EOS_DECLARE_FUNC(uint32_t) EOS_Ecom_GetTransactionCount(EOS_HEcom Handle, const 
 /**
  * Fetches the transaction handle at the given index.
  *
- * @param Options structure containing the Epic Online Services Account ID and index being accessed
+ * @param Options structure containing the Epic Account ID and index being accessed
  *
  * @see EOS_Ecom_CheckoutCallbackInfo
  * @see EOS_Ecom_Transaction_Release
@@ -329,7 +384,7 @@ EOS_DECLARE_FUNC(EOS_EResult) EOS_Ecom_CopyTransactionByIndex(EOS_HEcom Handle, 
 /**
  * Fetches the transaction handle at the given index.
  *
- * @param Options structure containing the Epic Online Services Account ID and transaction ID being accessed
+ * @param Options structure containing the Epic Account ID and transaction ID being accessed
  *
  * @see EOS_Ecom_CheckoutCallbackInfo
  * @see EOS_Ecom_Transaction_Release
@@ -358,7 +413,7 @@ EOS_DECLARE_FUNC(EOS_EResult) EOS_Ecom_Transaction_GetTransactionId(EOS_Ecom_HTr
 /**
  * Fetch the number of entitlements that are part of this transaction.
  *
- * @param Options structure containing the Epic Online Services Account ID being accessed
+ * @param Options structure containing the Epic Account ID being accessed
  *
  * @see EOS_Ecom_Transaction_CopyEntitlementByIndex
  *

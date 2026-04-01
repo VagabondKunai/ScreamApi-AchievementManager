@@ -6,7 +6,7 @@
 
 #pragma pack(push, 8)
 
-EXTERN_C typedef struct EOS_LeaderboardsHandle* EOS_HLeaderboards;
+EOS_EXTERN_C typedef struct EOS_LeaderboardsHandle* EOS_HLeaderboards;
 
 /** Timestamp value representing an undefined time for EOS_HLeaderboards. */
 #define EOS_LEADERBOARDS_TIME_UNDEFINED -1
@@ -296,7 +296,7 @@ EOS_STRUCT(EOS_Leaderboards_QueryLeaderboardRanksOptions, (
 EOS_STRUCT(EOS_Leaderboards_LeaderboardRecord, (
 	/** API Version: Set this to EOS_LEADERBOARDS_LEADERBOARDRECORD_API_LATEST. */
 	int32_t ApiVersion;
-	/** The Product User ID assoicated with this record */
+	/** The Product User ID associated with this record */
 	EOS_ProductUserId UserId;
 	/** Sorted position on leaderboard */
 	uint32_t Rank;
@@ -363,6 +363,8 @@ EOS_STRUCT(EOS_Leaderboards_OnQueryLeaderboardRanksCompleteCallbackInfo, (
 	EOS_EResult ResultCode;
 	/** Context that was passed into EOS_Leaderboards_QueryLeaderboardRanks. */
 	void* ClientData;
+	/** The Leaderboard ID for the leaderboard that was queried. */
+	const char* LeaderboardId;
 ));
 
 /**

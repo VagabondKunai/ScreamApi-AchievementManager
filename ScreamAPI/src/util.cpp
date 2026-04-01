@@ -21,7 +21,8 @@ EOS_HPlatform getHPlatform(){
 }
 
 EOS_HAuth getHAuth(){
-	static auto result = EOS_Platform_GetAuthInterface(getHPlatform());
+	// Don't cache - platform might be created after first call
+	auto result = EOS_Platform_GetAuthInterface(getHPlatform());
 	if(result == nullptr) {
 		Logger::debug("[UTIL] getHAuth: Returned NULL");
 	}
@@ -29,7 +30,8 @@ EOS_HAuth getHAuth(){
 }
 
 EOS_HConnect getHConnect(){
-	static auto result = EOS_Platform_GetConnectInterface(getHPlatform());
+	// Don't cache - platform might be created after first call
+	auto result = EOS_Platform_GetConnectInterface(getHPlatform());
 	if(result == nullptr) {
 		Logger::debug("[UTIL] getHConnect: Returned NULL");
 	}
@@ -37,13 +39,52 @@ EOS_HConnect getHConnect(){
 }
 
 EOS_HAchievements getHAchievements(){
-	static auto result = EOS_Platform_GetAchievementsInterface(getHPlatform());
+	// Don't cache - platform might be created after first call
+	auto result = EOS_Platform_GetAchievementsInterface(getHPlatform());
 	if(result == nullptr) {
 		Logger::debug("[UTIL] getHAchievements: Returned NULL (Platform=%p)", getHPlatform());
 	} else {
 		Logger::debug("[UTIL] getHAchievements: Success (Handle=%p)", result);
 	}
 	return result;
+}
+
+bool isEOSPlatformReady(){
+	auto platform = getHPlatform();
+	if(platform == nullptr) {
+		return false;
+	}
+	
+	auto hAchievements = EOS_Platform_GetAchievementsInterface(platform);
+	return (hAchievements != nullptr);
+}
+
+void logPlatformStatus(){
+	auto platform = getHPlatform();
+	
+	Logger::debug("[UTIL] ========== EOS Platform Status ==========");
+	Logger::debug("[UTIL] Platform Handle:     %p", platform);
+	
+	if(platform == nullptr) {
+		Logger::error("[UTIL] Platform is NULL - cannot check interfaces");
+		Logger::debug("[UTIL] ==========================================");
+		return;
+	}
+	
+	auto hConnect = EOS_Platform_GetConnectInterface(platform);
+	auto hAuth = EOS_Platform_GetAuthInterface(platform);
+	auto hAchievements = EOS_Platform_GetAchievementsInterface(platform);
+	
+	Logger::debug("[UTIL] Connect Interface:   %p %s", hConnect, hConnect ? "OK" : "NULL");
+	Logger::debug("[UTIL] Auth Interface:      %p %s", hAuth, hAuth ? "OK" : "NULL");
+	Logger::debug("[UTIL] Achievements Int:    %p %s", hAchievements, hAchievements ? "OK" : "NULL");
+	
+	auto productUserId = getProductUserId();
+	auto epicAccountId = getEpicAccountId();
+	
+	Logger::debug("[UTIL] Product User ID:     %p %s", productUserId, productUserId ? "OK" : "NULL");
+	Logger::debug("[UTIL] Epic Account ID:     %p %s", epicAccountId, epicAccountId ? "OK" : "NULL");
+	Logger::debug("[UTIL] ==========================================");
 }
 
 EOS_EpicAccountId getEpicAccountId(){

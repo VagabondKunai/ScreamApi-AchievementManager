@@ -4,7 +4,7 @@
 #include "eos_lobby_types.h"
 
 /**
- * The Lobby Interface is used to manage lobbies that provide a persistent connection between users and 
+ * The Lobby Interface is used to manage lobbies that provide a persistent connection between users and
  * notifications of data sharing/updates.  Lobbies may also be found by advertising and searching with the backend service.
  * All Lobby Interface calls take a handle of type EOS_HLobby as the first parameter.
  * This handle can be retrieved from an EOS_HPlatform handle by using the EOS_Platform_GetLobbyInterface function.
@@ -60,6 +60,21 @@ EOS_DECLARE_FUNC(void) EOS_Lobby_DestroyLobby(EOS_HLobby Handle, const EOS_Lobby
  *         EOS_InvalidParameters if any of the options are incorrect
  */
 EOS_DECLARE_FUNC(void) EOS_Lobby_JoinLobby(EOS_HLobby Handle, const EOS_Lobby_JoinLobbyOptions* Options, void* ClientData, const EOS_Lobby_OnJoinLobbyCallback CompletionDelegate);
+
+/**
+ * This is a special case of EOS_Lobby_JoinLobby.  It should only be used if the lobby has had Join-by-ID enabled.
+ * Additionally, Join-by-ID should only be enabled to support native invites on an integrated platform.
+ *
+ * @param Options Structure containing information about the lobby to be joined
+ * @param ClientData Arbitrary data that is passed back to you in the CompletionDelegate
+ * @param CompletionDelegate A callback that is fired when the join operation completes, either successfully or in error
+ *
+ * @return EOS_Success if the destroy completes successfully
+ *         EOS_InvalidParameters if any of the options are incorrect
+ *
+ * @see EOS_Lobby_JoinLobby
+ */
+EOS_DECLARE_FUNC(void) EOS_Lobby_JoinLobbyById(EOS_HLobby Handle, const EOS_Lobby_JoinLobbyByIdOptions* Options, void* ClientData, const EOS_Lobby_OnJoinLobbyByIdCallback CompletionDelegate);
 
 /**
  * Leave a lobby given a lobby ID
@@ -135,8 +150,28 @@ EOS_DECLARE_FUNC(void) EOS_Lobby_PromoteMember(EOS_HLobby Handle, const EOS_Lobb
 EOS_DECLARE_FUNC(void) EOS_Lobby_KickMember(EOS_HLobby Handle, const EOS_Lobby_KickMemberOptions* Options, void* ClientData, const EOS_Lobby_OnKickMemberCallback CompletionDelegate);
 
 /**
+ * Hard mute an existing member in the lobby, can't speak but can hear other members of the lobby
+ *
+ * @param Options Structure containing information about the lobby and member to be hard muted
+ * @param ClientData Arbitrary data that is passed back to you in the CompletionDelegate
+ * @param CompletionDelegate A callback that is fired when the hard mute operation completes, either successfully or in error
+ *
+ * @return EOS_Success if the hard mute completes successfully
+ *         EOS_IncompatibleVersion if the API version passed in is incorrect
+ *         EOS_InvalidParameters if any of the options are incorrect
+ *         EOS_Invalid_ProductUserID if a target user is incorrect
+ *         EOS_NotFound if lobby or target user cannot be found
+ *         EOS_Lobby_VoiceNotEnabled if lobby has no voice enabled
+ *         EOS_Lobby_NotOwner if the calling user is not the owner of the lobby
+ *         EOS_NotFound if a lobby of interest does not exist
+ *         EOS_AlreadyPending if the user is already marked for hard mute
+ *         EOS_TooManyRequests if there are too many requests
+ */
+EOS_DECLARE_FUNC(void) EOS_Lobby_HardMuteMember(EOS_HLobby Handle, const EOS_Lobby_HardMuteMemberOptions* Options, void* ClientData, const EOS_Lobby_OnHardMuteMemberCallback CompletionDelegate);
+
+/**
  * Register to receive notifications when a lobby owner updates the attributes associated with the lobby.
- * @note must call RemoveNotifyLobbyUpdateReceived to remove the notification
+ * @note If the returned NotificationId is valid, you must call EOS_Lobby_RemoveNotifyLobbyUpdateReceived when you no longer wish to have your NotificationHandler called.
  *
  * @param Options Structure containing information about the request.
  * @param ClientData Arbitrary data that is passed back to you in the CompletionDelegate.
@@ -155,7 +190,7 @@ EOS_DECLARE_FUNC(void) EOS_Lobby_RemoveNotifyLobbyUpdateReceived(EOS_HLobby Hand
 
 /**
  * Register to receive notifications when a lobby member updates the attributes associated with themselves inside the lobby.
- * @note must call RemoveNotifyLobbyMemberUpdateReceived to remove the notification
+ * @note If the returned NotificationId is valid, you must call EOS_Lobby_RemoveNotifyLobbyMemberUpdateReceived when you no longer wish to have your NotificationHandler called.
  *
  * @param Options Structure containing information about the request.
  * @param ClientData Arbitrary data that is passed back to you in the CompletionDelegate.
@@ -174,7 +209,7 @@ EOS_DECLARE_FUNC(void) EOS_Lobby_RemoveNotifyLobbyMemberUpdateReceived(EOS_HLobb
 
 /**
  * Register to receive notifications about the changing status of lobby members.
- * @note must call RemoveNotifyLobbyMemberStatusReceived to remove the notification
+ * @note If the returned NotificationId is valid, you must call EOS_Lobby_RemoveNotifyLobbyMemberStatusReceived when you no longer wish to have your NotificationHandler called.
  *
  * @param Options Structure containing information about the request.
  * @param ClientData Arbitrary data that is passed back to you in the CompletionDelegate.
@@ -255,7 +290,7 @@ EOS_DECLARE_FUNC(EOS_EResult) EOS_Lobby_GetInviteIdByIndex(EOS_HLobby Handle, co
  * Searching is possible in three methods, all mutually exclusive
  * - set the lobby ID to find a specific lobby
  * - set the target user ID to find a specific user
- * - set lobby parameters to find an array of lobbies that match the search criteria (not available yet)
+ * - set lobby parameters to find an array of lobbies that match the search criteria
  *
  * @param Options Structure containing required parameters such as the maximum number of search results
  * @param OutLobbySearchHandle The new search handle or null if there was an error creating the search handle
@@ -267,7 +302,7 @@ EOS_DECLARE_FUNC(EOS_EResult) EOS_Lobby_CreateLobbySearch(EOS_HLobby Handle, con
 
 /**
  * Register to receive notifications about lobby invites sent to local users.
- * @note must call RemoveNotifyLobbyInviteReceived to remove the notification
+ * @note If the returned NotificationId is valid, you must call EOS_Lobby_RemoveNotifyLobbyInviteReceived when you no longer wish to have your NotificationHandler called.
  *
  * @param Options Structure containing information about the request.
  * @param ClientData Arbitrary data that is passed back to you in the CompletionDelegate.
@@ -286,7 +321,7 @@ EOS_DECLARE_FUNC(void) EOS_Lobby_RemoveNotifyLobbyInviteReceived(EOS_HLobby Hand
 
 /**
  * Register to receive notifications about lobby invites accepted by local user via the overlay.
- * @note must call RemoveNotifyLobbyInviteAccepted to remove the notification
+ * @note If the returned NotificationId is valid, you must call EOS_Lobby_RemoveNotifyLobbyInviteAccepted when you no longer wish to have your NotificationHandler called.
  *
  * @param Options Structure containing information about the request.
  * @param ClientData Arbitrary data that is passed back to you in the CompletionDelegate.
@@ -304,8 +339,27 @@ EOS_DECLARE_FUNC(EOS_NotificationId) EOS_Lobby_AddNotifyLobbyInviteAccepted(EOS_
 EOS_DECLARE_FUNC(void) EOS_Lobby_RemoveNotifyLobbyInviteAccepted(EOS_HLobby Handle, EOS_NotificationId InId);
 
 /**
- * Register to receive notifications about lobby join game accepted by local user via the overlay.
- * @note must call EOS_Lobby_RemoveNotifyJoinLobbyAccepted to remove the notification
+ * Register to receive notifications about lobby invites rejected by local user.
+ * @note If the returned NotificationId is valid, you must call EOS_Lobby_RemoveNotifyLobbyInviteRejected when you no longer wish to have your NotificationHandler called.
+ *
+ * @param Options Structure containing information about the request.
+ * @param ClientData Arbitrary data that is passed back to you in the CompletionDelegate.
+ * @param NotificationFn A callback that is fired when a a notification is received.
+ *
+ * @return handle representing the registered callback
+ */
+EOS_DECLARE_FUNC(EOS_NotificationId) EOS_Lobby_AddNotifyLobbyInviteRejected(EOS_HLobby Handle, const EOS_Lobby_AddNotifyLobbyInviteRejectedOptions* Options, void* ClientData, const EOS_Lobby_OnLobbyInviteRejectedCallback NotificationFn);
+
+/**
+ * Unregister from receiving notifications when a user rejects a lobby invitation via the overlay.
+ *
+ * @param InId Handle representing the registered callback
+ */
+EOS_DECLARE_FUNC(void) EOS_Lobby_RemoveNotifyLobbyInviteRejected(EOS_HLobby Handle, EOS_NotificationId InId);
+
+/**
+ * Register to receive notifications about lobby "JOIN" performed by local user (when no invite) via the overlay.
+ * @note If the returned NotificationId is valid, you must call EOS_Lobby_RemoveNotifyJoinLobbyAccepted when you no longer wish to have your NotificationHandler called.
  *
  * @param Options Structure containing information about the request.
  * @param ClientData Arbitrary data that is passed back to you in the CompletionDelegate.
@@ -321,6 +375,33 @@ EOS_DECLARE_FUNC(EOS_NotificationId) EOS_Lobby_AddNotifyJoinLobbyAccepted(EOS_HL
  * @param InId Handle representing the registered callback
  */
 EOS_DECLARE_FUNC(void) EOS_Lobby_RemoveNotifyJoinLobbyAccepted(EOS_HLobby Handle, EOS_NotificationId InId);
+
+/**
+ * Register to receive notifications about a lobby "INVITE" performed by a local user via the overlay.
+ * This is only needed when a configured integrated platform has EOS_IPMF_DisableSDKManagedSessions set.  The EOS SDK will
+ * then use the state of EOS_IPMF_PreferEOSIdentity and EOS_IPMF_PreferIntegratedIdentity to determine when the NotificationFn is
+ * called.
+ *
+ * @note If the returned NotificationId is valid, you must call EOS_Lobby_RemoveNotifySendLobbyNativeInviteRequested when you no longer wish to have your NotificationHandler called.
+ *
+ * @param Options Structure containing information about the request.
+ * @param ClientData Arbitrary data that is passed back to you in the CompletionDelegate.
+ * @param NotificationFn A callback that is fired when a notification is received.
+ *
+ * @return handle representing the registered callback
+ *
+ * @see EOS_IPMF_DisableSDKManagedSessions
+ * @see EOS_IPMF_PreferEOSIdentity
+ * @see EOS_IPMF_PreferIntegratedIdentity
+ */
+EOS_DECLARE_FUNC(EOS_NotificationId) EOS_Lobby_AddNotifySendLobbyNativeInviteRequested(EOS_HLobby Handle, const EOS_Lobby_AddNotifySendLobbyNativeInviteRequestedOptions* Options, void* ClientData, const EOS_Lobby_OnSendLobbyNativeInviteRequestedCallback NotificationFn);
+
+/**
+ * Unregister from receiving notifications when a user requests a send invite via the overlay.
+ *
+ * @param InId Handle representing the registered callback
+ */
+EOS_DECLARE_FUNC(void) EOS_Lobby_RemoveNotifySendLobbyNativeInviteRequested(EOS_HLobby Handle, EOS_NotificationId InId);
 
 /**
  * EOS_Lobby_CopyLobbyDetailsHandleByInviteId is used to immediately retrieve a handle to the lobby information from after notification of an invite
@@ -392,6 +473,42 @@ EOS_DECLARE_FUNC(EOS_EResult) EOS_Lobby_CopyLobbyDetailsHandle(EOS_HLobby Handle
 EOS_DECLARE_FUNC(EOS_EResult) EOS_Lobby_GetRTCRoomName(EOS_HLobby Handle, const EOS_Lobby_GetRTCRoomNameOptions* Options, char* OutBuffer, uint32_t* InOutBufferLength);
 
 /**
+ * Joins the RTC room associated with a specific lobby a local user belongs to.
+ *
+ * This function will only succeed when called on a lobby that has the RTC Room feature enabled.
+ * Clients may check if the RTC Room feature is enabled by inspecting the value of EOS_LobbyDetails_Info::bRTCRoomEnabled.
+ *
+ * @param Options Structure containing information about which lobby a local user should join the RTC Room for
+ * @param ClientData Arbitrary data that is passed back to you in the CompletionDelegate
+ * @param CompletionDelegate A callback that is fired when the join RTC Room operation completes, either successfully or in error
+ *
+ * @return EOS_Success if creation completes succesfully
+ *         EOS_NotFound if the lobby does not exist
+ *         EOS_Disabled if the lobby exists, but did not have the RTC Room feature enabled when created
+ *         EOS_InvalidParameters if you pass a null pointer on invalid length for any of the parameters
+ *         EOS_NoChange if call does not affect the state of the RTC Room
+ *         EOS_InvalidState if call to join is made when RTC Room state is not disconnected/disconnecting
+ */
+EOS_DECLARE_FUNC(void) EOS_Lobby_JoinRTCRoom(EOS_HLobby Handle, const EOS_Lobby_JoinRTCRoomOptions* Options, void* ClientData, const EOS_Lobby_OnJoinRTCRoomCallback CompletionDelegate);
+
+/**
+ * Leaves the RTC room associated with a specific lobby a local user belongs to.
+ *
+ * This function will only succeed when called on a lobby that has the RTC Room feature enabled.
+ * Clients may check if the RTC Room feature is enabled by inspecting the value of EOS_LobbyDetails_Info::bRTCRoomEnabled.
+ *
+ * @param Options Structure containing information about which lobby a local user should leave the RTC Room for
+ * @param ClientData Arbitrary data that is passed back to you in the CompletionDelegate
+ * @param CompletionDelegate A callback that is fired when the join RTC Room operation completes, either successfully or in error
+ * @return EOS_Success if creation completes succesfully
+ *         EOS_NotFound if the lobby does not exist
+ *         EOS_Disabled if the lobby exists, but did not have the RTC Room feature enabled when created
+ *         EOS_InvalidParameters if you pass a null pointer on invalid length for any of the parameters
+ *         EOS_NoChange if call does not affect the state of the RTC Room
+ */
+EOS_DECLARE_FUNC(void) EOS_Lobby_LeaveRTCRoom(EOS_HLobby Handle, const EOS_Lobby_LeaveRTCRoomOptions* Options, void* ClientData, const EOS_Lobby_OnLeaveRTCRoomCallback CompletionDelegate);
+
+/**
  * Get the current connection status of the RTC Room for a lobby.
  *
  * The RTC Room connection status is independent of the lobby connection status, however the lobby system will attempt to keep
@@ -447,6 +564,58 @@ EOS_DECLARE_FUNC(EOS_NotificationId) EOS_Lobby_AddNotifyRTCRoomConnectionChanged
  * @see EOS_Lobby_AddNotifyRTCRoomConnectionChanged
  */
 EOS_DECLARE_FUNC(void) EOS_Lobby_RemoveNotifyRTCRoomConnectionChanged(EOS_HLobby Handle, EOS_NotificationId InId);
+
+/**
+ * Get the Connection string for an EOS lobby. The connection string describes the presence of a player in terms of game state.
+ * Xbox platforms expect titles to embed this into their MultiplayerActivity at creation.
+ * When present, the SDK will use this value to populate session presence in the social overlay and facilitate platform invitations.
+ *
+ * @param Options Structure containing the input parameters. API version, the LobbyID of the lobby to generate the string from and the PUID of the requesting user.
+ * @param OutBuffer The buffer to store the null-terminated ConnectString within
+ * @param InOutBufferLength In: The maximum amount of writable chars in OutBuffer see EOS_LOBBY_GETCONNECTSTRING_BUFFER_SIZE, Out: The minimum amount of chars needed in OutBuffer to store the ConnectString (including the null-terminator). May be set to zero depending on the error result.
+ *
+ * @return EOS_Success if retrieving the string was successful.
+ *         EOS_InvalidParameters if the OutBuffer or InOutBufferLength are null.
+ *         EOS_IncompatibleVersion if the API version passed in is incorrect.
+ *         EOS_NotFound if no lobby is found matching the LobbyID and PUID provided.
+ *         EOS_LimitExceeded if the provided InOutBufferLength is too small to contain the resulting string.
+ */
+EOS_DECLARE_FUNC(EOS_EResult) EOS_Lobby_GetConnectString(EOS_HLobby Handle, const EOS_Lobby_GetConnectStringOptions* Options, char* OutBuffer, uint32_t* InOutBufferLength);
+
+/**
+ * Parse the ConnectString for an EOS lobby invitation to extract just the lobby ID.
+ * Used for joining a lobby from a connection string (as generated by GetConnectString) found in a platform invitation or presence.
+ *
+ * @param Options Structure containing the input parameters. API version and ConnectString.
+ * @param OutBuffer The buffer to store the null-terminated lobby ID within
+ * @param InOutBufferLength In: The maximum amount of writable chars in OutBuffer see EOS_LOBBY_PARSECONNECTSTRING_BUFFER_SIZE, Out: The minimum amount of chars needed in OutBuffer to store the LobbyID (including the null-terminator). May be set to zero depending on the error result.
+ *
+ * @return EOS_Success if retrieving the string was successful.
+ *         EOS_InvalidParameters if the OutBuffer or InOutBufferLength are null.
+ *         EOS_IncompatibleVersion if the API version passed in is incorrect.
+ *         EOS_LimitExceeded if the provided InOutBufferLength is too small to contain the resulting string.
+ */
+EOS_DECLARE_FUNC(EOS_EResult) EOS_Lobby_ParseConnectString(EOS_HLobby Handle, const EOS_Lobby_ParseConnectStringOptions* Options, char* OutBuffer, uint32_t* InOutBufferLength);
+
+/**
+ * Register to receive notifications about leave lobby requests performed by the local user via the overlay.
+ * When user requests to leave the lobby in the social overlay, the SDK does not automatically leave the lobby, it is up to the game to perform any necessary cleanup and call the EOS_Lobby_LeaveLobby method using the lobbyId sent in the notification function.
+ * @note If the returned NotificationId is valid, you must call EOS_Lobby_RemoveNotifyLeaveLobbyRequested when you no longer wish to have your NotificationHandler called.
+ *
+ * @param Options Structure containing information about the request.
+ * @param ClientData Arbitrary data that is passed back to you in the CompletionDelegate.
+ * @param NotificationFn A callback that is fired when a notification is received.
+ *
+ * @return handle representing the registered callback
+ */
+EOS_DECLARE_FUNC(EOS_NotificationId) EOS_Lobby_AddNotifyLeaveLobbyRequested(EOS_HLobby Handle, const EOS_Lobby_AddNotifyLeaveLobbyRequestedOptions* Options, void* ClientData, const EOS_Lobby_OnLeaveLobbyRequestedCallback NotificationFn);
+
+/**
+ * Unregister from receiving notifications when a user performs a leave lobby action via the overlay.
+ *
+ * @param InId Handle representing the registered callback
+ */
+EOS_DECLARE_FUNC(void) EOS_Lobby_RemoveNotifyLeaveLobbyRequested(EOS_HLobby Handle, EOS_NotificationId InId);
 
 /**
  * To modify lobbies or the lobby member data, you must call EOS_Lobby_UpdateLobbyModification to create a Lobby Modification handle. To modify that handle, call
@@ -547,6 +716,17 @@ EOS_DECLARE_FUNC(EOS_EResult) EOS_LobbyModification_AddMemberAttribute(EOS_HLobb
  */
 EOS_DECLARE_FUNC(EOS_EResult) EOS_LobbyModification_RemoveMemberAttribute(EOS_HLobbyModification Handle, const EOS_LobbyModification_RemoveMemberAttributeOptions* Options);
 
+/**
+ * Set the Allowed Platform IDs for the lobby
+ *
+ * @param Options Options associated with allowed Platform IDs for this lobby
+ *
+ * @return EOS_Success if setting this parameter was successful
+ *         EOS_IncompatibleVersion if the API version passed in is incorrect
+ *         EOS_InvalidParameters if the AllowedPlatformIds array is null but the count is 0 or if the count is greater than 0 and the array is null.
+ */
+EOS_DECLARE_FUNC(EOS_EResult) EOS_LobbyModification_SetAllowedPlatformIds(EOS_HLobbyModification Handle, const EOS_LobbyModification_SetAllowedPlatformIdsOptions* Options);
+
 #include "eos_lobby_types.h"
 
 /**
@@ -579,6 +759,25 @@ EOS_DECLARE_FUNC(EOS_ProductUserId) EOS_LobbyDetails_GetLobbyOwner(EOS_HLobbyDet
  * @see EOS_LobbyDetails_Info_Release
  */
 EOS_DECLARE_FUNC(EOS_EResult) EOS_LobbyDetails_CopyInfo(EOS_HLobbyDetails Handle, const EOS_LobbyDetails_CopyInfoOptions* Options, EOS_LobbyDetails_Info ** OutLobbyDetailsInfo);
+
+/**
+ * EOS_LobbyDetails_CopyMemberInfo is used to immediately retrieve a copy of lobby member information from an existing lobby.
+ * If the call returns an EOS_Success result, the out parameter, OutLobbyDetailsMemberInfo, must be passed to EOS_LobbyDetails_MemberInfo_Release to release the memory associated with it.
+ * Note: this information is only available if you are actively in the lobby.  It is not available for search results.
+ *
+ * @param Options Structure containing the input parameters
+ * @param OutLobbyDetailsMemberInfo Out parameter used to receive the EOS_LobbyDetails_Info structure.
+ *
+ * @return EOS_Success if the information is available and passed out in OutLobbyMemberDetailsInfo
+ *         EOS_InvalidParameters if you pass a null pointer for the out parameter
+ *         EOS_IncompatibleVersion if the API version passed in is incorrect
+ *         EOS_NotFound if searching for a target user ID returns no results
+ *
+ * @see EOS_LobbyDetails_MemberInfo
+ * @see EOS_LobbyDetails_CopyMemberInfoOptions
+ * @see EOS_LobbyDetails_MemberInfo_Release
+ */
+EOS_DECLARE_FUNC(EOS_EResult) EOS_LobbyDetails_CopyMemberInfo(EOS_HLobbyDetails Handle, const EOS_LobbyDetails_CopyMemberInfoOptions* Options, EOS_LobbyDetails_MemberInfo ** OutLobbyDetailsMemberInfo);
 
 /**
  * Get the number of attributes associated with this lobby
@@ -634,6 +833,7 @@ EOS_DECLARE_FUNC(uint32_t) EOS_LobbyDetails_GetMemberCount(EOS_HLobbyDetails Han
 
 /**
  * EOS_LobbyDetails_GetMemberByIndex is used to immediately retrieve individual members registered with a lobby.
+ * Note: this information is only available if you are actively in the lobby.  It is not available for search results.
  *
  * @param Options Structure containing the input parameters
  *
@@ -646,6 +846,7 @@ EOS_DECLARE_FUNC(EOS_ProductUserId) EOS_LobbyDetails_GetMemberByIndex(EOS_HLobby
 
 /**
  * EOS_LobbyDetails_GetMemberAttributeCount is used to immediately retrieve the attribute count for members in a lobby.
+ * Note: this information is only available if you are actively in the lobby.  It is not available for search results.
  *
  * @param Options Structure containing the input parameters
  *
@@ -659,6 +860,7 @@ EOS_DECLARE_FUNC(uint32_t) EOS_LobbyDetails_GetMemberAttributeCount(EOS_HLobbyDe
 /**
  * EOS_LobbyDetails_CopyMemberAttributeByIndex is used to immediately retrieve a copy of a lobby member attribute from an existing lobby.
  * If the call returns an EOS_Success result, the out parameter, OutAttribute, must be passed to EOS_Lobby_Attribute_Release to release the memory associated with it.
+ * Note: this information is only available if you are actively in the lobby.  It is not available for search results.
  *
  * @param Options Structure containing the input parameters
  * @param OutAttribute Out parameter used to receive the EOS_Lobby_Attribute structure.
@@ -676,6 +878,7 @@ EOS_DECLARE_FUNC(EOS_EResult) EOS_LobbyDetails_CopyMemberAttributeByIndex(EOS_HL
 /**
  * EOS_LobbyDetails_CopyMemberAttributeByKey is used to immediately retrieve a copy of a lobby member attribute from an existing lobby.
  * If the call returns an EOS_Success result, the out parameter, OutAttribute, must be passed to EOS_Lobby_Attribute_Release to release the memory associated with it.
+ * Note: this information is only available if you are actively in the lobby.  It is not available for search results.
  *
  * @param Options Structure containing the input parameters
  * @param OutAttribute Out parameter used to receive the EOS_Lobby_Attribute structure.

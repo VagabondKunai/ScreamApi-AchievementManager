@@ -2,12 +2,11 @@
 
 #pragma once
 
-#include "eos_platform_prereqs.h"
 #include "eos_common.h"
 
 #pragma pack(push, 8)
 
-EXTERN_C typedef struct EOS_RTCHandle* EOS_HRTC;
+EOS_EXTERN_C typedef struct EOS_RTCHandle* EOS_HRTC;
 
 /** Participant RTC's status change */
 EOS_ENUM(EOS_ERTCParticipantStatus,
@@ -28,6 +27,25 @@ EOS_ENUM(EOS_ERTCParticipantStatus,
  * @see EOS_RTC_JoinRoomOptions::Flags
  */
 #define EOS_RTC_JOINROOMFLAGS_ENABLE_ECHO 0x01
+
+
+/**
+ * Enables the (optional) data channel feature for RTC rooms. This feature allows members of a room to send packets to all
+ * members of a room they are in, and automatically receive data packets sent by other players in that room.
+ * Data packets sent this way will be automatically relayed by EOS RTC servers to all other members of the room that are listening.
+ * It is not currently possible to send packets to only a subset of members of a room chosen by the sender, all members
+ * listening will receive the data.
+ *
+ * @see EOS_RTC_JoinRoomOptions::Flags
+ */
+#define EOS_RTC_JOINROOMFLAGS_ENABLE_DATACHANNEL 0x04
+
+ /**
+  * The flag is reserved for future use.
+  *
+  * @see EOS_RTC_JoinRoomOptions::Flags
+  */
+#define EOS_RTC_JOINROOMFLAGS_RESERVED_VOICE_FEATURE 0x08
 
 /**
  * This struct is used to call EOS_RTC_JoinRoom.
@@ -58,6 +76,24 @@ EOS_STRUCT(EOS_RTC_JoinRoomOptions, (
 	EOS_Bool bManualAudioOutputEnabled;
 ));
 
+#define EOS_RTC_OPTION_KEY_MAXCHARCOUNT 256
+#define EOS_RTC_OPTION_VALUE_MAXCHARCOUNT 256
+
+/** The most recent version of the EOS_RTC_Option struct. */
+#define EOS_RTC_OPTION_API_LATEST 1
+
+/**
+ * This struct is used to get information about a specific option.
+ */
+EOS_STRUCT(EOS_RTC_Option, (
+	/** API Version: Set this to EOS_RTC_OPTION_API_LATEST. */
+	int32_t ApiVersion;
+	/** The unique key of the option. The max size of the string is EOS_RTC_OPTION_KEY_MAXCHARCOUNT. */
+	const char* Key;
+	/** The value of the option. The max size of the string is EOS_RTC_OPTION_VALUE_MAXCHARCOUNT. */
+	const char* Value;
+));
+
 /**
  * This struct is passed in with a call to EOS_RTC_OnJoinRoomCallback.
  */
@@ -77,6 +113,12 @@ EOS_STRUCT(EOS_RTC_JoinRoomCallbackInfo, (
 	EOS_ProductUserId LocalUserId;
 	/** The room the user was trying to join. */
 	const char* RoomName;
+	/** The room option items count. */
+	uint32_t RoomOptionsCount;
+	/**
+	 * The room option items.
+	 */
+	const EOS_RTC_Option* RoomOptions;
 ));
 
 /**
@@ -184,7 +226,7 @@ EOS_STRUCT(EOS_RTC_AddNotifyDisconnectedOptions, (
 
 /**
  * This struct is passed in with a call to EOS_RTC_AddNotifyDisconnected registered event.
-*/
+ */
 EOS_STRUCT(EOS_RTC_DisconnectedCallbackInfo, (
 	/** This returns:
 	 * EOS_Success The room was left cleanly.
@@ -252,15 +294,111 @@ EOS_STRUCT(EOS_RTC_ParticipantStatusChangedCallbackInfo, (
 	/** What status change occurred */
 	EOS_ERTCParticipantStatus ParticipantStatus;
 	/** The participant metadata items count.
-	 * This is only set if ParticipantStatus is EOS_RTCPS_Joined
+	 * This is only set for the first notification where ParticipantStatus is EOS_RTCPS_Joined. Subsequent notifications
+	 * such as when bParticipantInBlocklist changes will not contain any metadata.
 	 */
 	uint32_t ParticipantMetadataCount;
 	/** The participant metadata items.
-	 * This is only set if ParticipantStatus is EOS_RTCPS_Joined
+	 * This is only set for the first notification where ParticipantStatus is EOS_RTCPS_Joined. Subsequent notifications
+	 * such as when bParticipantInBlocklist changes will not contain any metadata.
 	 */
 	const EOS_RTC_ParticipantMetadata* ParticipantMetadata;
+	/** The participant's block list status, if ParticipantStatus is EOS_RTCPS_Joined.
+	 * This is set to true if the participant is in any of the local user's applicable block lists,
+	 * such Epic block list or any of the current platform's block lists.
+	 * It can be used to detect when an internal automatic RTC block is applied because of trust and safety restrictions.
+	 */
+	EOS_Bool bParticipantInBlocklist;
 ));
 
 EOS_DECLARE_CALLBACK(EOS_RTC_OnParticipantStatusChangedCallback, const EOS_RTC_ParticipantStatusChangedCallbackInfo* Data);
+
+
+
+/**
+ * RTC SetSettings API
+ */
+
+/** The most recent version of the EOS_RTC_SetSetting API. */
+#define EOS_RTC_SETSETTING_API_LATEST 1
+
+/**
+ * This struct is used to call EOS_RTC_SetSetting
+ *
+ * Available values of SettingName:
+ * - DisableEchoCancelation: Disables the use of echo cancellation for the audio channel. Default "False".
+ * - DisableNoiseSupression: Disables the use of noise suppression for the audio channel. Default "False".
+ * - DisableAutoGainControl: Disables the use of auto gain control for the audio channel. Default "False".
+ * - DisableDtx: Allows to disable the use of DTX.  Default "False".
+ */
+EOS_STRUCT(EOS_RTC_SetSettingOptions, (
+	/** API Version: Set this to EOS_RTC_SETSETTING_API_LATEST. */
+	int32_t ApiVersion;
+	/** Setting that should be set. */
+	const char* SettingName;
+	/** Value to set the setting to. */
+	const char* SettingValue;
+));
+
+/** The most recent version of the EOS_RTC_SetRoomSetting API. */
+#define EOS_RTC_SETROOMSETTING_API_LATEST 1
+
+/**
+ * This struct is used to call EOS_RTC_SetRoomSetting
+ *
+ * Available values of SettingName:
+ * - DisableEchoCancelation: Disables the use of echo cancellation for the audio channel. Default "False".
+ * - DisableNoiseSupression: Disables the use of noise suppression for the audio channel. Default "False".
+ * - DisableAutoGainControl: Disables the use of auto gain control for the audio channel. Default "False".
+ * - DisableDtx: Allows to disable the use of DTX.  Default "False".
+ */
+EOS_STRUCT(EOS_RTC_SetRoomSettingOptions, (
+	/** API Version: Set this to EOS_RTC_SETROOMSETTING_API_LATEST. */
+	int32_t ApiVersion;
+	/** The Product User ID of the user trying to request this operation. */
+	EOS_ProductUserId LocalUserId;
+	/** The room the setting will be applied to. */
+	const char* RoomName;
+	/** Setting that should be set. */
+	const char* SettingName;
+	/** Value to set the setting to. */
+	const char* SettingValue;
+));
+
+
+/**
+ * RTC Statistics API
+ */
+
+/** The most recent version of the EOS_RTC_AddNotifyRoomStatisticsUpdated API. */
+#define EOS_RTC_ADDNOTIFYROOMSTATISTICSUPDATED_API_LATEST 1
+
+/**
+ * This struct is used to call EOS_RTC_AddNotifyRoomStatisticsUpdated.
+ */
+EOS_STRUCT(EOS_RTC_AddNotifyRoomStatisticsUpdatedOptions, (
+	/** API Version: Set this to EOS_RTC_ADDNOTIFYROOMSTATISTICSUPDATED_API_LATEST. */
+	int32_t ApiVersion;
+	/** The Product User ID of the user trying to request this operation. */
+	EOS_ProductUserId LocalUserId;
+	/** The room this event is registered on. */
+	const char* RoomName;
+));
+
+/**
+ * This struct is passed in with a call to EOS_RTC_AddNotifyRoomStatisticsUpdated registered event.
+ */
+EOS_STRUCT(EOS_RTC_RoomStatisticsUpdatedInfo, (
+	/** Client-specified data passed into EOS_RTC_AddNotifyRoomStatisticsUpdated. */
+	void* ClientData;
+	/** The Product User ID of the user who initiated this request. */
+	EOS_ProductUserId LocalUserId;
+	/** The room associated with this event. */
+	const char* RoomName;
+	/** Statistics in JSON format */
+	const char* Statistic;
+));
+
+EOS_DECLARE_CALLBACK(EOS_RTC_OnRoomStatisticsUpdatedCallback, const EOS_RTC_RoomStatisticsUpdatedInfo* Data);
 
 #pragma pack(pop)

@@ -8,7 +8,7 @@
  * You can use stats to determine when to unlock achievements and how to use rank users in leaderboards.
  * All Stats Interface calls take a handle of type EOS_HStats as the first parameter.
  * This handle can be retrieved from an EOS_HPlatform handle by using the EOS_Platform_GetStatsInterface function.
- * 
+ *
  * @see EOS_Platform_GetStatsInterface
  */
 
@@ -54,7 +54,7 @@ EOS_DECLARE_FUNC(uint32_t) EOS_Stats_GetStatsCount(EOS_HStats Handle, const EOS_
 /**
  * Fetches a stat from a given index. Use EOS_Stats_Stat_Release when finished with the data.
  *
- * @param Options Structure containing the Epic Online Services Account ID and index being accessed
+ * @param Options Structure containing the Product User ID and index being accessed
  * @param OutStat The stat data for the given index, if it exists and is valid
  *
  * @see EOS_Stats_Stat_Release
@@ -68,7 +68,7 @@ EOS_DECLARE_FUNC(EOS_EResult) EOS_Stats_CopyStatByIndex(EOS_HStats Handle, const
 /**
  * Fetches a stat from cached stats by name. Use EOS_Stats_Stat_Release when finished with the data.
  *
- * @param Options Structure containing the Epic Online Services Account ID and name being accessed
+ * @param Options Structure containing the Product User ID and name being accessed
  * @param OutStat The stat data for the given name, if it exists and is valid
  *
  * @see EOS_Stats_Stat_Release

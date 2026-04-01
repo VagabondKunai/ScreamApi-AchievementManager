@@ -67,6 +67,7 @@ EOS_DECLARE_FUNC(EOS_EResult) EOS_Achievements_CopyAchievementDefinitionV2ByAchi
 
 /**
  * Query for a list of achievements for a specific player, including progress towards completion for each achievement.
+ * Note: By default, this query will not return locked hidden achievements. To return all achievements, call EOS_Achievements_QueryDefinitions first.
  *
  * @note When the Social Overlay is enabled then this will be called automatically.  The Social Overlay is enabled by default (see EOS_PF_DISABLE_SOCIAL_OVERLAY).
  *
@@ -94,7 +95,7 @@ EOS_DECLARE_FUNC(uint32_t) EOS_Achievements_GetPlayerAchievementCount(EOS_HAchie
 /**
  * Fetches a player achievement from a given index.
  *
- * @param Options Structure containing the Epic Online Services Account ID and index being accessed
+ * @param Options Structure containing the Product User ID and index being accessed
  * @param OutAchievement The player achievement data for the given index, if it exists and is valid, use EOS_Achievements_PlayerAchievement_Release when finished
  *
  * @see EOS_Achievements_PlayerAchievement_Release
@@ -109,7 +110,7 @@ EOS_DECLARE_FUNC(EOS_EResult) EOS_Achievements_CopyPlayerAchievementByIndex(EOS_
 /**
  * Fetches a player achievement from a given achievement ID.
  *
- * @param Options Structure containing the Epic Online Services Account ID and achievement ID being accessed
+ * @param Options Structure containing the Product User ID and achievement ID being accessed
  * @param OutAchievement The player achievement data for the given achievement ID, if it exists and is valid, use EOS_Achievements_PlayerAchievement_Release when finished
  *
  * @see EOS_Achievements_PlayerAchievement_Release
@@ -135,7 +136,7 @@ EOS_DECLARE_FUNC(void) EOS_Achievements_UnlockAchievements(EOS_HAchievements Han
 
 /**
  * Register to receive achievement unlocked notifications.
- * @note must call EOS_Achievements_RemoveNotifyAchievementsUnlocked to remove the notification
+ * @note If the returned NotificationId is valid, you must call EOS_Achievements_RemoveNotifyAchievementsUnlocked when you no longer wish to have your NotificationHandler called.
  *
  * @see EOS_Achievements_RemoveNotifyAchievementsUnlocked
  *
@@ -208,7 +209,7 @@ EOS_DECLARE_FUNC(uint32_t) EOS_Achievements_GetUnlockedAchievementCount(EOS_HAch
  *
  * Fetches an unlocked achievement from a given index.
  *
- * @param Options Structure containing the Epic Online Services Account ID and index being accessed
+ * @param Options Structure containing the Product User ID and index being accessed
  * @param OutAchievement The unlocked achievement data for the given index, if it exists and is valid, use EOS_Achievements_UnlockedAchievement_Release when finished
  *
  * @see EOS_Achievements_UnlockedAchievement_Release
@@ -224,7 +225,7 @@ EOS_DECLARE_FUNC(EOS_EResult) EOS_Achievements_CopyUnlockedAchievementByIndex(EO
  *
  * Fetches an unlocked achievement from a given achievement ID.
  *
- * @param Options Structure containing the Epic Online Services Account ID and achievement ID being accessed
+ * @param Options Structure containing the Product User ID and achievement ID being accessed
  * @param OutAchievement The unlocked achievement data for the given achievement ID, if it exists and is valid, use EOS_Achievements_UnlockedAchievement_Release when finished
  *
  * @see EOS_Achievements_UnlockedAchievement_Release
@@ -239,7 +240,7 @@ EOS_DECLARE_FUNC(EOS_EResult) EOS_Achievements_CopyUnlockedAchievementByAchievem
  * DEPRECATED! Use EOS_Achievements_AddNotifyAchievementsUnlockedV2 instead.
  *
  * Register to receive achievement unlocked notifications.
- * @note must call EOS_Achievements_RemoveNotifyAchievementsUnlocked to remove the notification
+ * @note If the returned NotificationId is valid, you must call EOS_Achievements_RemoveNotifyAchievementsUnlocked when you no longer wish to have your NotificationHandler called.
  *
  * @see EOS_Achievements_RemoveNotifyAchievementsUnlocked
  *
