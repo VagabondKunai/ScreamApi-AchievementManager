@@ -1,8 +1,8 @@
-# ScreamAPI
+# EpicUnlocker
 #### Legit Achievement Unlocker for Epic Games
 Welcome to the Epic Unlocker repository based on screamapi.
 
-## Download
+## Download The OG Screamapi
 You can always download the latest ScreamAPI release in this repository at the following address:
 https://github.com/acidicoala/ScreamAPI/releases/latest
 
