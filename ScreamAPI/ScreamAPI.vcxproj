@@ -22,6 +22,8 @@
     <ClInclude Include="resources\resource.h" />
     <ClInclude Include="src\achievement_manager.h" />
     <ClInclude Include="src\constants.h" />
+    <ClInclude Include="src\eos_compat.h" />
+    <ClInclude Include="src\eos_hooks.h" />
     <ClInclude Include="src\eos-sdk\eos_achievements.h" />
     <ClInclude Include="src\eos-sdk\eos_achievements_types.h" />
     <ClInclude Include="src\eos-sdk\eos_auth.h" />
@@ -74,10 +76,6 @@
     <ClInclude Include="src\eos-sdk\Mac\eos_Mac_base.h" />
     <ClInclude Include="src\eos-sdk\Windows\eos_Windows_base.h" />
     <ClInclude Include="src\framework.h" />
-    <ClInclude Include="src\LinkerExports\LegacyExports32.h" />
-    <ClInclude Include="src\LinkerExports\LegacyExports64.h" />
-    <ClInclude Include="src\LinkerExports\LinkerExports32.h" />
-    <ClInclude Include="src\LinkerExports\LinkerExports64.h" />
     <ClInclude Include="src\pch.h" />
     <ClInclude Include="src\ScreamAPI.h" />
     <ClInclude Include="src\util.h" />
@@ -85,6 +83,7 @@
   <ItemGroup>
     <ClCompile Include="src\achievement_manager.cpp" />
     <ClCompile Include="src\dllmain.cpp" />
+    <ClCompile Include="src\eos_compat.cpp" />
     <ClCompile Include="src\eos-impl\eos_achievements.cpp" />
     <ClCompile Include="src\eos-impl\eos_auth.cpp" />
     <ClCompile Include="src\eos-impl\eos_common.cpp" />
@@ -92,7 +91,7 @@
     <ClCompile Include="src\eos-impl\eos_ecom_entitlements.cpp" />
     <ClCompile Include="src\eos-impl\eos_ecom_ownership.cpp" />
     <ClCompile Include="src\eos-impl\eos_ecom_transactions.cpp" />
-    <ClCompile Include="src\eos-impl\eos_init.cpp" />
+    <ClCompile Include="src\eos_hooks.cpp" />
     <ClCompile Include="src\eos-impl\eos_sdk.cpp" />
     <ClCompile Include="src\pch.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>
@@ -133,26 +132,26 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
-    <PlatformToolset>v142</PlatformToolset>
+    <PlatformToolset>v143</PlatformToolset>
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
-    <PlatformToolset>v142</PlatformToolset>
+    <PlatformToolset>v143</PlatformToolset>
     <WholeProgramOptimization>true</WholeProgramOptimization>
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
-    <PlatformToolset>v142</PlatformToolset>
+    <PlatformToolset>v143</PlatformToolset>
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
-    <PlatformToolset>v142</PlatformToolset>
+    <PlatformToolset>v143</PlatformToolset>
     <WholeProgramOptimization>true</WholeProgramOptimization>
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
@@ -223,7 +222,7 @@
       <ConformanceMode>true</ConformanceMode>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
       <LanguageStandard>stdcpp17</LanguageStandard>
-      <AdditionalIncludeDirectories>$(ProjectDir)src;$(SolutionDir)Logger\src;$(SolutionDir)Config\src;$(SolutionDir)Overlay\src</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)src;$(SolutionDir)Logger\src;$(SolutionDir)Config\src;$(SolutionDir)Overlay\src;$(SolutionDir)Overlay\src\minhook\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
     </ClCompile>
     <Link>
@@ -249,7 +248,7 @@
       <ConformanceMode>true</ConformanceMode>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
       <LanguageStandard>stdcpp17</LanguageStandard>
-      <AdditionalIncludeDirectories>$(ProjectDir)src;$(SolutionDir)Logger\src;$(SolutionDir)Config\src;$(SolutionDir)Overlay\src</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)src;$(SolutionDir)Logger\src;$(SolutionDir)Config\src;$(SolutionDir)Overlay\src;$(SolutionDir)Overlay\src\minhook\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
     </ClCompile>
     <Link>
@@ -277,7 +276,7 @@
       <ConformanceMode>true</ConformanceMode>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
       <LanguageStandard>stdcpp17</LanguageStandard>
-      <AdditionalIncludeDirectories>$(ProjectDir)src;$(SolutionDir)Logger\src;$(SolutionDir)Config\src;$(SolutionDir)Overlay\src</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)src;$(SolutionDir)Logger\src;$(SolutionDir)Config\src;$(SolutionDir)Overlay\src;$(SolutionDir)Overlay\src\minhook\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
     </ClCompile>
     <Link>
@@ -292,9 +291,8 @@
       </Command>
     </CustomBuildStep>
     <PostBuildEvent>
-      <Command>powershell Compress-Archive -Update ^
--Path "$(TargetPath)","$(ProjectDir)ScreamAPI.ini" ^
--DestinationPath "build\ScreamAPIv$(ScreamApiVersion).zip"</Command>
+      <Command>
+      </Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -308,7 +306,7 @@
       <ConformanceMode>true</ConformanceMode>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
       <LanguageStandard>stdcpp17</LanguageStandard>
-      <AdditionalIncludeDirectories>$(ProjectDir)src;$(SolutionDir)Logger\src;$(SolutionDir)Config\src;$(SolutionDir)Overlay\src</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)src;$(SolutionDir)Logger\src;$(SolutionDir)Config\src;$(SolutionDir)Overlay\src;$(SolutionDir)Overlay\src\minhook\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
     </ClCompile>
     <Link>
@@ -319,9 +317,8 @@
       <EnableUAC>false</EnableUAC>
     </Link>
     <PostBuildEvent>
-      <Command>powershell Compress-Archive -Update ^
--Path "$(TargetPath)","$(ProjectDir)ScreamAPI.ini" ^
--DestinationPath "build\ScreamAPIv$(ScreamApiVersion).zip"</Command>
+      <Command>
+      </Command>
     </PostBuildEvent>
     <CustomBuildStep>
       <Command>

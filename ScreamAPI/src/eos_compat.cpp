@@ -208,6 +208,16 @@ void logCompatibilityInfo() {
 		return;
 	}
 
+	// --- 32-bit + SDK 1.19+ deprecation warning (official EOS 1.19.0.3) ---
+	// This warning only appears in 32-bit builds. 64-bit is fully supported.
+#ifdef _M_IX86
+	if (isVersionOrNewer(1, 19, 0)) {
+		Logger::warn("[COMPAT] This game uses an EOS SDK version (≥1.19.0) that no longer supports 32-bit Windows.");
+		Logger::warn("[COMPAT] Official deprecation: https://dev.epicgames.com/docs/epic-online-services/whats-new#2026");
+		Logger::warn("[COMPAT] Achievements overlay may not work. Use EOS SDK ≤1.18.1.2 for 32-bit compatibility.");
+	}
+#endif
+
 	Logger::info("[COMPAT] ");
 	Logger::info("[COMPAT] Feature Availability:");
 	Logger::info("[COMPAT]   Connect Logout:          %s", isFeatureAvailable("ConnectLogout") ? "YES" : "NO");

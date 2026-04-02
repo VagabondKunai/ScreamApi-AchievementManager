@@ -170,6 +170,12 @@
     <ClInclude Include="src\achievement_manager.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="src\eos_compat.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\eos_hooks.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
     <ClInclude Include="src\LinkerExports\LegacyExports32.h">
       <Filter>Header Files\LinkerExports</Filter>
     </ClInclude>
@@ -257,6 +263,12 @@
       <Filter>Source Files\eos-impl</Filter>
     </ClCompile>
     <ClCompile Include="src\achievement_manager.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\eos_compat.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\eos_hooks.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\util.cpp">

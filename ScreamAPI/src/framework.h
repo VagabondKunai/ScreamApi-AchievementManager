@@ -9,6 +9,7 @@
 #include <sstream>
 #include <vector>
 #include <string>
+#include <thread>
 #include <Logger.h>
 
 // Ecom

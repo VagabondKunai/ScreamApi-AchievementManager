@@ -8,7 +8,6 @@ namespace ScreamAPI{
 
 extern HMODULE thisDLL;
 extern HMODULE originalDLL;
-extern EOS_HPlatform hPlatform;  // Global platform handle
 void init(HMODULE hModule);
 void destroy();
 
