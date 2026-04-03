@@ -6,11 +6,17 @@
 #include "eos_compat.h"
 #include "Logger.h"
 #include "MinHook.h"
+#include <mutex>
+#include <vector>
+#include <thread>
+#include <atomic>
 
 namespace EOS_Hooks {
 
 static bool hooksInitialized = false;
 static HMODULE originalEOSDLL = nullptr;
+static std::atomic<bool> g_bAchievementsConfigured{false};
+static std::mutex g_configMutex;
 
 // Original function pointers (filled by MinHook)
 namespace Original {
@@ -55,15 +61,10 @@ namespace Original {
 // Helper to get the decorated name for 32-bit
 static std::string GetDecoratedName(const char* baseName) {
 #ifdef _WIN64
-    // 64-bit uses undecorated names
     return std::string(baseName);
 #else
-    // 32-bit __stdcall: _FunctionName@ByteCount
-    // We'll use a lookup table for known functions (the ones we hook)
     std::stringstream ss;
     ss << "_" << baseName << "@";
-
-    // Byte count = number of parameters * 4
     if (strcmp(baseName, "EOS_Platform_Create") == 0) ss << "4";
     else if (strcmp(baseName, "EOS_Platform_Release") == 0) ss << "4";
     else if (strcmp(baseName, "EOS_Platform_Tick") == 0) ss << "4";
@@ -88,15 +89,13 @@ static std::string GetDecoratedName(const char* baseName) {
     else if (strcmp(baseName, "EOS_Auth_GetLoggedInAccountByIndex") == 0) ss << "8";
     else if (strcmp(baseName, "EOS_Auth_AddNotifyLoginStatusChanged") == 0) ss << "16";
     else {
-        // Fallback – will likely fail, but we'll try
         Logger::warn("[HOOK] Unknown decorated name for: %s", baseName);
-        ss << "16"; // guess
+        ss << "16";
     }
     return ss.str();
 #endif
 }
 
-// Helper macro to install a hook (handles 32-bit decoration)
 #define INSTALL_HOOK(module, funcName, hookFunc, originalPtr) \
     do { \
         std::string targetName = GetDecoratedName(#funcName); \
@@ -119,6 +118,58 @@ static std::string GetDecoratedName(const char* baseName) {
             Logger::warn("[HOOK] Function not found (may be optional): %s", targetName.c_str()); \
         } \
     } while(0)
+
+// ------------------------------------------------------------------
+// Pending unlock storage and retry mechanism
+// ------------------------------------------------------------------
+struct PendingUnlock {
+    EOS_HAchievements Handle;
+    EOS_Achievements_UnlockAchievementsOptions Options;
+    void* ClientData;
+    EOS_Achievements_OnUnlockAchievementsCompleteCallback CompletionDelegate;
+};
+static std::vector<PendingUnlock> g_pendingUnlocks;
+static std::mutex g_pendingMutex;
+static std::atomic<int> g_forcedQueriesPending{0};
+
+static void RetryPendingUnlocks() {
+    std::lock_guard<std::mutex> lock(g_pendingMutex);
+    for (auto& p : g_pendingUnlocks) {
+        Logger::info("[HOOK] Retrying pending unlock for achievement: %s", p.Options.AchievementIds[0]);
+        Original::Achievements_UnlockAchievements(p.Handle, &p.Options, p.ClientData, p.CompletionDelegate);
+    }
+    g_pendingUnlocks.clear();
+}
+
+static void ForceAchievementsConfiguration(EOS_HAchievements handle, EOS_ProductUserId userId) {
+    if (g_bAchievementsConfigured) return;
+    std::lock_guard<std::mutex> lock(g_configMutex);
+    if (g_bAchievementsConfigured) return;
+
+    Logger::info("[HOOK] Forcing achievements configuration (QueryDefinitions + QueryPlayerAchievements)");
+
+    g_forcedQueriesPending = 2;
+
+    EOS_Achievements_QueryDefinitionsOptions defOpts = {1, userId, nullptr, nullptr, 0};
+    Original::Achievements_QueryDefinitions(handle, &defOpts, nullptr,
+        [](const EOS_Achievements_OnQueryDefinitionsCompleteCallbackInfo* Data) {
+            Logger::debug("[HOOK] Forced QueryDefinitions result: %s", EOS_EResult_ToString(Data->ResultCode));
+            if (--g_forcedQueriesPending == 0) {
+                g_bAchievementsConfigured = true;
+                RetryPendingUnlocks();
+            }
+        });
+
+    EOS_Achievements_QueryPlayerAchievementsOptions playerOpts = {1, userId};
+    Original::Achievements_QueryPlayerAchievements(handle, &playerOpts, nullptr,
+        [](const EOS_Achievements_OnQueryPlayerAchievementsCompleteCallbackInfo* Data) {
+            Logger::debug("[HOOK] Forced QueryPlayerAchievements result: %s", EOS_EResult_ToString(Data->ResultCode));
+            if (--g_forcedQueriesPending == 0) {
+                g_bAchievementsConfigured = true;
+                RetryPendingUnlocks();
+            }
+        });
+}
 
 // ============================================================================
 // HOOK IMPLEMENTATIONS
@@ -205,12 +256,37 @@ void EOS_CALL Achievements_QueryPlayerAchievements(EOS_HAchievements Handle, con
 
 void EOS_CALL Achievements_UnlockAchievements(EOS_HAchievements Handle, const EOS_Achievements_UnlockAchievementsOptions* Options, void* ClientData, const EOS_Achievements_OnUnlockAchievementsCompleteCallback CompletionDelegate) {
     Logger::info("[HOOK] EOS_Achievements_UnlockAchievements called");
-    if (Options && Options->AchievementIds && Options->AchievementsCount > 0) {
-        Logger::info("[HOOK]   Unlocking %d achievement(s)", Options->AchievementsCount);
+    if (Options) {
+        Logger::info("[HOOK]   ApiVersion: %d", Options->ApiVersion);
+        Logger::info("[HOOK]   UserId: %p", Options->UserId);
+        Logger::info("[HOOK]   AchievementsCount: %u", Options->AchievementsCount);
         for (uint32_t i = 0; i < Options->AchievementsCount; i++) {
-            Logger::info("[HOOK]     - %s", Options->AchievementIds[i]);
+            Logger::info("[HOOK]     Achievement ID: %s", Options->AchievementIds[i]);
         }
+    } else {
+        Logger::warn("[HOOK]   Options is NULL!");
     }
+
+    auto currentUserId = Util::getProductUserId();
+    auto hAchievements = Util::getHAchievements();
+    Logger::info("[HOOK]   Current Util::getProductUserId() = %p", currentUserId);
+    Logger::info("[HOOK]   Current Util::getHAchievements() = %p", hAchievements);
+    Logger::info("[HOOK]   Handle passed to hook = %p", Handle);
+
+    if (Options && Options->UserId != currentUserId) {
+        Logger::warn("[HOOK]   UserId mismatch! Hook Options->UserId (%p) != current Util::getProductUserId() (%p)", Options->UserId, currentUserId);
+    }
+
+    // If achievements not yet configured AND the config option is enabled, force configuration and postpone unlock
+    if (!g_bAchievementsConfigured && Options && Options->UserId && Config::ForceAchievementsConfig()) {
+        Logger::warn("[HOOK] Achievements not configured yet – forcing configuration and postponing unlock");
+        ForceAchievementsConfiguration(Handle, Options->UserId);
+        std::lock_guard<std::mutex> lock(g_pendingMutex);
+        g_pendingUnlocks.push_back({Handle, *Options, ClientData, CompletionDelegate});
+        return;
+    }
+
+    // Otherwise proceed normally
     Original::Achievements_UnlockAchievements(Handle, Options, ClientData, CompletionDelegate);
 }
 

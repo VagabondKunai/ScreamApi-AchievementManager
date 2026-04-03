@@ -3,6 +3,7 @@
 #include <Overlay.h>
 #include <algorithm>
 #include <cctype>
+#include <cstring>
 #include <string>
 #include <vector>
 
@@ -151,7 +152,7 @@ void DrawAchievementList() {
     ImGui::Separator();
     ImGui::Spacing();
 
-    // Statistics summary (no emoji)
+    // Statistics summary + progress bar
     if (Overlay::achievements && Overlay::achievements->size() > 0) {
         int total = (int)Overlay::achievements->size();
         int unlocked = 0;
@@ -159,9 +160,14 @@ void DrawAchievementList() {
             if (a.UnlockState == UnlockState::Unlocked) unlocked++;
         }
         float percent = (total > 0) ? (unlocked * 100.0f / total) : 0.0f;
+        
+        // Text statistics
         ImGui::PushFont(regularFont);
         ImGui::TextColored(ImVec4(0.9f, 0.9f, 0.2f, 1), "%d / %d unlocked (%.1f%%)", unlocked, total, percent);
         ImGui::PopFont();
+        
+        // Progress bar (full width, height 8)
+        ImGui::ProgressBar(percent / 100.0f, ImVec2(-1, 8), "");
         ImGui::Spacing();
     }
 
@@ -286,6 +292,32 @@ void DrawAchievementList() {
                 break;
             }
             ImGui::EndGroup();
+
+            // --- Right-click context menu to copy achievement ID ---
+            if (ImGui::IsItemHovered() && ImGui::IsMouseClicked(ImGuiMouseButton_Right)) {
+                ImGui::OpenPopup("AchievementContextMenu");
+            }
+            if (ImGui::BeginPopup("AchievementContextMenu")) {
+                if (ImGui::Selectable("Copy Achievement ID")) {
+                    if (OpenClipboard(nullptr)) {
+                        EmptyClipboard();
+                        size_t len = strlen(achievement.AchievementId) + 1;
+                        HGLOBAL hGlobal = GlobalAlloc(GMEM_MOVEABLE, len);
+                        if (hGlobal) {
+                            char* pGlobal = (char*)GlobalLock(hGlobal);
+                            strcpy_s(pGlobal, len, achievement.AchievementId);
+                            GlobalUnlock(hGlobal);
+                            SetClipboardData(CF_TEXT, hGlobal);
+                        }
+                        CloseClipboard();
+                        Logger::info("Copied achievement ID to clipboard: %s", achievement.AchievementId);
+                    } else {
+                        Logger::error("Failed to open clipboard for copying achievement ID");
+                    }
+                }
+                ImGui::EndPopup();
+            }
+            // ------------------------------------------------------
 
             ImGui::PopID();
         }

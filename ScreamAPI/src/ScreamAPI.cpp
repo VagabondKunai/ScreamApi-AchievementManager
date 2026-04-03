@@ -20,14 +20,13 @@ using namespace Util;
 // ------------------------------------------------------------------
 // Recursively search for the EOS SDK DLL starting from a root folder
 // ------------------------------------------------------------------
-static HMODULE FindEOSSDKRecursive(const fs::path& root, const std::wstring& dllName, int maxDepth = 8) {
+static HMODULE FindEOSSDKRecursive(const fs::path& root, const std::wstring& dllName, int maxDepth = 10) {
     if (!fs::exists(root) || !fs::is_directory(root))
         return nullptr;
 
     std::error_code ec;
     for (auto it = fs::recursive_directory_iterator(root, fs::directory_options::skip_permission_denied, ec);
          it != fs::recursive_directory_iterator(); ++it) {
-        // Depth limit
         if (it.depth() > maxDepth)
             continue;
 
@@ -43,16 +42,6 @@ static HMODULE FindEOSSDKRecursive(const fs::path& root, const std::wstring& dll
             }
         }
     }
-    return nullptr;
-}
-
-// ------------------------------------------------------------------
-// Alternative: Win32 FindFirstFile implementation (no C++17 dependency)
-// (kept as fallback if filesystem is problematic)
-// ------------------------------------------------------------------
-static HMODULE FindEOSSDKRecursiveWin32(const std::wstring& root, const std::wstring& dllName, int maxDepth = 8) {
-    // Implementation using FindFirstFile / FindNextFile
-    // ... (omitted for brevity, we'll use the C++17 version above)
     return nullptr;
 }
 
@@ -89,7 +78,6 @@ namespace ScreamAPI
 
         // -----------------------------------------------------------------
         // 1. Try to get the already-loaded module (injection method)
-        //    Retry for up to 10 seconds (100 * 100ms)
         // -----------------------------------------------------------------
         HMODULE original = nullptr;
         for (int i = 0; i < 100; ++i) {
@@ -102,7 +90,7 @@ namespace ScreamAPI
         }
 
         // -----------------------------------------------------------------
-        // 2. If not found, try to load it from the current directory
+        // 2. Try to load from current directory
         // -----------------------------------------------------------------
         if (!original) {
             Logger::debug("GetModuleHandle failed, trying LoadLibrary from current directory");
@@ -111,16 +99,36 @@ namespace ScreamAPI
         }
 
         // -----------------------------------------------------------------
-        // 3. Recursive search (C++17) – finds SDK buried in subfolders
+        // 3. Recursive search (depth 10)
         // -----------------------------------------------------------------
         if (!original) {
             Logger::debug("Searching recursively for %ls in game directory...", origDllW.c_str());
             const auto gameDir = getDLLparentDir(hModule);
-            original = FindEOSSDKRecursive(gameDir, origDllW, 6);
+            original = FindEOSSDKRecursive(gameDir, origDllW, 10);
         }
 
         // -----------------------------------------------------------------
-        // 4. Fallback: known subfolders (kept for compatibility)
+        // 4. Custom path from config file
+        // -----------------------------------------------------------------
+        if (!original) {
+            std::string customPathA = Config::GetCustomEOSPath();
+            if (!customPathA.empty()) {
+                std::wstring customPathW(customPathA.begin(), customPathA.end());
+                if (fs::exists(customPathW)) {
+                    original = LoadLibrary(customPathW.c_str());
+                    if (original) {
+                        Logger::info("Loaded original EOS SDK from custom path: %s", customPathA.c_str());
+                    } else {
+                        Logger::error("Failed to load from custom path: %s", customPathA.c_str());
+                    }
+                } else {
+                    Logger::warn("Custom EOS path does not exist: %s", customPathA.c_str());
+                }
+            }
+        }
+
+        // -----------------------------------------------------------------
+        // 5. Hardcoded subfolder fallback (common engine paths only)
         // -----------------------------------------------------------------
         if (!original) {
             const std::vector<std::wstring> subfolders = {
@@ -128,9 +136,6 @@ namespace ScreamAPI
                 L"Engine/Binaries/ThirdParty/EOS/Win64/",
                 L"Binaries/Win32/",
                 L"Binaries/Win64/",
-                L"Beholder_Data/Plugins/",
-                L"Beholder_Data/Plugins/x86/",
-                L"Beholder_Data/Plugins/x86_64/",
             };
             for (const auto& sub : subfolders) {
                 auto path = getDLLparentDir(hModule) / sub / origDllW;
@@ -141,14 +146,6 @@ namespace ScreamAPI
                     break;
                 }
             }
-        }
-
-        // -----------------------------------------------------------------
-        // 5. Last resort: Unity _Data/Plugins folder (already covered by recursive)
-        //    but kept for safety.
-        // -----------------------------------------------------------------
-        if (!original) {
-            // original = FindInUnityDataPlugins(...); // covered by recursive, skip
         }
 
         if (original) {

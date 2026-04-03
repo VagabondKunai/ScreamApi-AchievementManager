@@ -10,6 +10,7 @@ bool EnableItemUnlocker();
 bool EnableEntitlementUnlocker();
 bool EnableLogging();
 bool EnableOverlay();
+bool ForceAchievementsConfig();  // <-- new
 // Logging
 std::string LogLevel();
 std::string LogFilename();
@@ -26,5 +27,8 @@ bool UnlockAllDLC();
 bool ForceSuccess();
 // DLC_List
 std::vector<std::string> DLC_List();
+
+// Custom path
+std::string GetCustomEOSPath();
 
 };
