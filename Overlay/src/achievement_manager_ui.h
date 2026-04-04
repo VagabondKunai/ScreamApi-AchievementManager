@@ -1,12 +1,15 @@
 #pragma once
+#include <d3d11.h>
+#include <windows.h>
 
-#include "Overlay_types.h"
+namespace AchievementManagerUI {
 
-namespace AchievementManagerUI{
-
-void InitImGui(void* pWindow, ID3D11Device* pD3D11Device, ID3D11DeviceContext* pContext);
+// Initialisation and shutdown
+void InitImGui(HWND hWnd, ID3D11Device* device, ID3D11DeviceContext* context);
 void ShutdownImGui();
-void DrawAchievementList();
-void DrawInitPopup();
 
-}
+// Drawing functions – call these inside your ImGui frame (after NewFrame)
+void DrawInitPopup();
+void DrawAchievementList();
+
+} // namespace AchievementManagerUI

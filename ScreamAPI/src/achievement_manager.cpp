@@ -449,6 +449,21 @@ void retryAchievementQueries() {
     }
 }
 
+void refresh() {
+    Logger::info("[ACH] Manual refresh triggered");
+
+    // Reset internal state flags so that a fresh query can run
+    definitionsQueried = false;
+    playerAchievementsQueried = false;
+    waitingForUser = false;
+
+    // Clear existing achievements – the query callback will repopulate
+    achievements.clear();
+
+    // Start a fresh definitions query
+    queryAchievementDefinitions();
+}
+
 void initWithOverlay(void* hModule) {
     Logger::ovrly("Achievement Manager: initWithOverlay called");
     Overlay::Init((HMODULE)hModule, &achievements, unlockAchievement);

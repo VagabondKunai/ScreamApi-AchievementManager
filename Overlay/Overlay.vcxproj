@@ -196,6 +196,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="src\achievement_manager_ui.h" />
+    <ClInclude Include="src\HotkeyHandler.h" />
     <ClInclude Include="src\curl\include\curl\curl.h" />
     <ClInclude Include="src\curl\include\curl\curlver.h" />
     <ClInclude Include="src\curl\include\curl\easy.h" />
@@ -230,6 +231,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\achievement_manager_ui.cpp" />
+    <ClCompile Include="src\HotkeyHandler.cpp" />
     <ClCompile Include="src\Loader.cpp" />
     <ClCompile Include="src\imgui\imgui.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">NotUsing</PrecompiledHeader>
