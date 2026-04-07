@@ -120,16 +120,3 @@ EnableLogging = true          ; Write logs to ScreamAPI.log
 LogLevel = debug              ; debug, info, warn, error
 ForceAchievementsConfig = false ; Some games need this to unlock (enable if stuck)
 CustomEOSPath =               ; Manual path to EOSSDK-Win64-Shipping.dll (if auto search failed)
-
----
-
-## Acknowledgements
-
-This project makes use of several open-source libraries listed below:
-
-* [inih](https://github.com/benhoyt/inih)
-* [stb](https://github.com/nothings/stb)
-* [curl](https://github.com/curl/curl)
-* [kiero](https://github.com/Rebzzel/kiero)
-* [imgui](https://github.com/ocornut/imgui)
-* [minhook](https://github.com/TsudaKageyu/minhook)
