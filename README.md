@@ -14,7 +14,6 @@
   <a href="#-quick-start">Quick Start</a> •
   <a href="#-how-it-works">How It Works</a> •
   <a href="#-configuration">Configuration</a> •
-  <a href="#-building-from-source">Building</a>
 </p>
 
 <p align="center">
@@ -67,7 +66,7 @@ Get Epic Unlocker running in your favourite game **in under 5 minutes**.
 
 ### 1. Download the latest release
 
-Grab `ScreamAPI64.dll` (and `ScreamAPI.ini`) from the [Releases](../../releases) page.
+Grab `EOSSDK-Win64-Shipping.dll` (and `ScreamAPI.ini`) from the [Releases](../../releases) page.
 
 ### 2. Inject the DLL
 
@@ -75,7 +74,7 @@ You have two options:
 
 #### A) Proxy Mode (easiest)
 1. Rename the game’s original `EOSSDK-Win64-Shipping.dll` to `EOSSDK-Win64-Shipping_o.dll`.
-2. Copy `ScreamAPI64.dll` into the game folder and rename it to `EOSSDK-Win64-Shipping.dll`.
+2. Copy `EOSSDK-Win64-Shipping.ll` into the same folder as original `EOSSDK-Win64-Shipping.dll`.
 3. Launch the game – Epic Unlocker will forward most calls to the original DLL.
 
 #### B) Hook Mode (using Koaloader)
