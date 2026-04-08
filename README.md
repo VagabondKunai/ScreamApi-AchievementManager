@@ -1,6 +1,6 @@
 <!-- Banner – replace with your own image URL or keep as text -->
 <p align="center">
-  <img src="https://raw.githubusercontent.com/acidicoala/ScreamAPI/main/.github/banner.png" alt="Epic Unlocker Banner">
+  <img src="https://github.com/user-attachments/assets/56341dfa-2309-4d55-8e51-b8e919360540" alt="Epic Unlocker Banner">
 </p>
 
 <h1 align="center">🎮 Epic Unlocker – Achievements & DLC Unlocker for EOS Games</h1>
