@@ -118,4 +118,5 @@ EnableOverlay = true          ; Show ImGui window (D3D11 only)
 EnableLogging = true          ; Write logs to ScreamAPI.log
 LogLevel = debug              ; debug, info, warn, error
 ForceAchievementsConfig = false ; Some games need this to unlock (enable if stuck)
+EnableKeyboardNavigation	= true			; Enable keyboard navigation in overlay (arrow keys, Tab, Enter, Esc)? Default: True
 CustomEOSPath =               ; Manual path to EOSSDK-Win64-Shipping.dll (if auto search failed)
