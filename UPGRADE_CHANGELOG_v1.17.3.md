@@ -548,10 +548,10 @@ Check `ScreamAPI.log` for:
 ## 🙏 CREDITS
 
 - **Original ScreamAPI**: Acidicoala
-- **Achievement Manager Restoration**: Abdo
-- **v1.16.3 Compatibility Fixes**: Abdo & Claude (Anthropic)
-- **v1.17.3 SDK Upgrade**: Abdo & Claude (Anthropic)
-- **Testing**: Abdo (Beholder 32-bit v1.16.3)
+- **Achievement Manager Restoration**: OGKush
+- **v1.16.3 Compatibility Fixes**: OGKush & Claude (Anthropic)
+- **v1.17.3 SDK Upgrade**: OGKush & Claude (Anthropic)
+- **Testing**: OGKush (Beholder 32-bit v1.16.3)
 - **EOS SDK**: Epic Games, Inc.
 
 ---
