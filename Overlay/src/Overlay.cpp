@@ -4,6 +4,7 @@
 #include "achievement_manager_ui.h"
 #include "achievement_manager.h"
 #include "HotkeyHandler.h"
+#include "Config.h"   // added for EnableOverlay check
 #include <thread>
 #include <future>
 #include <fstream>
@@ -38,14 +39,15 @@ UnlockAchievementFunction* unlockAchievement = nullptr;
 
 LRESULT WINAPI WindowProc(const HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
     if (uMsg == WM_KEYDOWN) {
-        // Shift + F5 – toggle overlay
         if (GetKeyState(VK_SHIFT) & 0x8000 && wParam == VK_F5) {
             bShowInitPopup = false;
             bShowAchievementManager = !bShowAchievementManager;
             Logger::info("[HOTKEY] Shift+F5 pressed, overlay toggled");
+            if (bShowAchievementManager) {
+                AchievementManagerUI::RequestFocus();
+            }
             return 0;
         }
-        // Ctrl + Shift + U – unlock all achievements (fallback, but global hotkey is primary)
         if ((GetKeyState(VK_CONTROL) & 0x8000) && (GetKeyState(VK_SHIFT) & 0x8000) && wParam == 'U') {
             Logger::info("[HOTKEY] Ctrl+Shift+U pressed - unlocking all");
             if (achievements) {
@@ -54,7 +56,6 @@ LRESULT WINAPI WindowProc(const HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lPar
                     if (ach.UnlockState == UnlockState::Locked) {
                         unlockAchievement(&ach);
                         count++;
-                        Logger::info("[HOTKEY] Unlocking: %s", ach.AchievementId);
                     }
                 }
                 Logger::info("[HOTKEY] Unlocked %d achievements.", count);
@@ -63,7 +64,6 @@ LRESULT WINAPI WindowProc(const HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lPar
             }
             return 0;
         }
-        // Ctrl + Shift + L – unlock specific achievements from unlock_list.txt in game folder
         if ((GetKeyState(VK_CONTROL) & 0x8000) && (GetKeyState(VK_SHIFT) & 0x8000) && wParam == 'L') {
             Logger::info("[HOTKEY] Ctrl+Shift+L pressed - reading unlock list");
             char path[MAX_PATH];
@@ -77,7 +77,6 @@ LRESULT WINAPI WindowProc(const HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lPar
                 std::string line;
                 int count = 0;
                 while (std::getline(file, line)) {
-                    // trim whitespace
                     line.erase(0, line.find_first_not_of(" \t\r\n"));
                     line.erase(line.find_last_not_of(" \t\r\n") + 1);
                     if (line.empty()) continue;
@@ -85,9 +84,6 @@ LRESULT WINAPI WindowProc(const HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lPar
                         if (ach.UnlockState == UnlockState::Locked) {
                             unlockAchievement(&ach);
                             count++;
-                            Logger::info("[HOTKEY] Unlocking specific: %s", ach.AchievementId);
-                        } else {
-                            Logger::info("[HOTKEY] Already unlocked: %s", ach.AchievementId);
                         }
                     });
                 }
@@ -110,6 +106,11 @@ LRESULT WINAPI WindowProc(const HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lPar
         default: break;
         }
         ImGui_ImplWin32_WndProcHandler(hWnd, translatedMsg, wParam, lParam);
+        
+        ImGuiIO& io = ImGui::GetIO();
+        if (io.WantCaptureKeyboard || io.WantCaptureMouse) {
+            return 0;
+        }
     }
     return CallWindowProc(originalWindowProc, hWnd, uMsg, wParam, lParam);
 }
@@ -138,7 +139,6 @@ HRESULT WINAPI hookedPresent(IDXGISwapChain* pSwapChain, UINT SyncInterval, UINT
     if (!bInit) {
         Logger::ovrly("hookedPresent: Initializing overlay");
         if (SUCCEEDED(pSwapChain->GetDevice(__uuidof(ID3D11Device), (void**)&gD3D11Device))) {
-            // D3D11 initialisation – overlay will work
             gD3D11Device->GetImmediateContext(&gContext);
             DXGI_SWAP_CHAIN_DESC sd;
             pSwapChain->GetDesc(&sd);
@@ -171,19 +171,17 @@ HRESULT WINAPI hookedPresent(IDXGISwapChain* pSwapChain, UINT SyncInterval, UINT
             Loader::AsyncLoadIcons();
         }
         else {
-            // D3D11 not available – start global hotkey instead
             Logger::error("hookedPresent: Failed to get D3D11 device");
             if (!hotkeyStarted) {
                 hotkeyStarted = true;
                 Logger::ovrly("D3D11 unavailable - starting global hotkey (Ctrl+Shift+U)");
                 HotkeyHandler::Start();
             }
-            bInit = true;   // avoid repeated attempts
+            bInit = true;
             return originalPresent(pSwapChain, SyncInterval, Flags);
         }
     }
 
-    // Draw ImGui overlay (only if D3D11 initialisation succeeded)
     if (gRenderTargetView) {
         ImGui_ImplDX11_NewFrame();
         ImGui_ImplWin32_NewFrame();
@@ -222,9 +220,19 @@ HRESULT WINAPI hookedResizeBuffer(IDXGISwapChain* pThis, UINT BufferCount, UINT 
 #define D3D11_ResizeBuffers 13
 
 static std::mutex initMutex;
+
 void Init(HMODULE hMod, Achievements* pAchievements, UnlockAchievementFunction* fnUnlockAchievement) {
     achievements = pAchievements;
     unlockAchievement = fnUnlockAchievement;
+
+    // Start global hotkeys unconditionally (works for all games: D3D11, OpenGL, Vulkan, Java)
+    static bool hotkeysStarted = false;
+    if (!hotkeysStarted && Config::EnableOverlay()) {
+        HotkeyHandler::Start();
+        hotkeysStarted = true;
+        Logger::ovrly("Global hotkeys started (Ctrl+Shift+U / Ctrl+Shift+L)");
+    }
+
     Logger::ovrly("Overlay::Init: Starting async initialization");
     static auto initJob = std::async(std::launch::async, []() {
         Logger::ovrly("Overlay::Init: Async init thread started");
@@ -242,6 +250,7 @@ void Init(HMODULE hMod, Achievements* pAchievements, UnlockAchievementFunction* 
                     Logger::error("Failed to initialize kiero. Are you sure you are running a DirectX 11 game?");
                 else
                     Logger::error("Failed to initialize kiero. Error code: %d", result);
+                // Hotkeys already started, no overlay needed
                 return;
             }
             bKieroInit = true;
@@ -263,7 +272,7 @@ void Shutdown() {
     if (originalWindowProc) {
         SetWindowLongPtr(gWindow, GWLP_WNDPROC, (LONG_PTR)originalWindowProc);
     }
-    HotkeyHandler::Stop();   // unregister global hotkey
+    HotkeyHandler::Stop();
     kiero::shutdown();
     Logger::ovrly("Kiero: Shutdown");
 }

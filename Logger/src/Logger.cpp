@@ -21,11 +21,6 @@ void Logger::init(bool logging, bool loggingDLC, bool loggingAch, bool loggingOv
 	isLoggingAchievements = loggingAch;
 	isLoggingOverlay = loggingOvrl;
 
-	// FORCE all logging categories on for debugging
-	isLoggingDLCqueries = true;
-	isLoggingAchievements = true;
-	isLoggingOverlay = true;
-
 	// Convert the log level from string to Enum
 	if(level == "DEBUG")
 		logLevel = LogLevel::DEBUG;
@@ -39,10 +34,8 @@ void Logger::init(bool logging, bool loggingDLC, bool loggingAch, bool loggingOv
 		std::string message = "Invalid Log Level: " + level;
 		std::wstring wmessage(message.begin(), message.end());
 		MessageBox(NULL, wmessage.c_str(), L"Logger Init Error", MB_ICONERROR | MB_OK);
+		logLevel = LogLevel::INFO; // fallback
 	}
-
-	// FORCE DEBUG for all logging
-	logLevel = LogLevel::DEBUG;
 
 	// Save the log file path
 	logFilepath = filepath;
@@ -56,7 +49,7 @@ void Logger::init(bool logging, bool loggingDLC, bool loggingAch, bool loggingOv
 }
 
 void log(LogLevel level, const char* const message, va_list args){
-	// Do not log  if logging disabled
+	// Do not log if logging disabled
 	if(!isEnabled)
 		return;
 

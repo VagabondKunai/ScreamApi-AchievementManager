@@ -23,6 +23,31 @@ static std::atomic<bool> waitingForUser{false};
 static std::atomic<bool> definitionsQueried{false};
 static std::atomic<bool> playerAchievementsQueried{false};
 
+// ----------------------------------------------------------------------------
+// Helper: Log achievement statistics to the log file
+// ----------------------------------------------------------------------------
+static void LogAchievementStats() {
+    if (achievements.empty()) {
+        Logger::ach("No achievements loaded yet.");
+        return;
+    }
+
+    int total = (int)achievements.size();
+    int unlocked = 0;
+    for (const auto& ach : achievements) {
+        if (ach.UnlockState == UnlockState::Unlocked) unlocked++;
+    }
+    float percent = (total > 0) ? (unlocked * 100.0f / total) : 0.0f;
+
+    Logger::ach("========================================");
+    Logger::ach("Achievement Statistics");
+    Logger::ach("  Total achievements: %d", total);
+    Logger::ach("  Unlocked: %d", unlocked);
+    Logger::ach("  Locked: %d", total - unlocked);
+    Logger::ach("  Progress: %.1f%%", percent);
+    Logger::ach("========================================");
+}
+
 void printAchievementDefinition(EOS_Achievements_DefinitionV2* definition) {
     if (definition == nullptr) {
         Logger::ach("Invalid Achievement Definition");
@@ -198,6 +223,9 @@ void EOS_CALL queryPlayerAchievementsComplete(const EOS_Achievements_OnQueryPlay
 
         EOS_Achievements_PlayerAchievement_Release(OutAchievement);
     }
+
+    // Log achievement statistics after processing
+    LogAchievementStats();
 }
 
 // ----------------------------------------------------------------------------

@@ -1,15 +1,11 @@
 #pragma once
+#include <Windows.h>
 #include <d3d11.h>
-#include <windows.h>
 
 namespace AchievementManagerUI {
-
-// Initialisation and shutdown
-void InitImGui(HWND hWnd, ID3D11Device* device, ID3D11DeviceContext* context);
-void ShutdownImGui();
-
-// Drawing functions – call these inside your ImGui frame (after NewFrame)
-void DrawInitPopup();
-void DrawAchievementList();
-
-} // namespace AchievementManagerUI
+    void InitImGui(HWND hWnd, ID3D11Device* device, ID3D11DeviceContext* context);
+    void ShutdownImGui();
+    void DrawInitPopup();
+    void DrawAchievementList();
+    void RequestFocus();   // <-- NEW (for focus on open)
+}

@@ -10,7 +10,8 @@ bool EnableItemUnlocker();
 bool EnableEntitlementUnlocker();
 bool EnableLogging();
 bool EnableOverlay();
-bool ForceAchievementsConfig();  // <-- new
+bool ForceAchievementsConfig();
+bool EnableKeyboardNavigation();  // <-- NEW
 // Logging
 std::string LogLevel();
 std::string LogFilename();

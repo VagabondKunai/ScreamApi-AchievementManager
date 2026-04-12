@@ -11,7 +11,8 @@ bool bEnableItemUnlocker = true;
 bool bEnableEntitlementUnlocker = true;
 bool bEnableLogging = false;
 bool bEnableOverlay = false;
-bool bForceAchievementsConfig = false;   // Disabled by default for compatibility
+bool bForceAchievementsConfig = false;
+bool bEnableKeyboardNavigation = true;   // <-- NEW
 // Logging
 std::string sLogLevel = "INFO";
 std::string sLogFilename = "ScreamAPI.log";
@@ -45,6 +46,7 @@ std::map<std::string, std::map<std::string, void*>> configMap = {
         {"EnableLogging", &bEnableLogging},
         {"EnableOverlay", &bEnableOverlay},
         {"ForceAchievementsConfig", &bForceAchievementsConfig},
+        {"EnableKeyboardNavigation", &bEnableKeyboardNavigation},   // <-- NEW
         {"CustomEOSPath", &sCustomEOSPath},
     }},
     {"Logging", {
@@ -119,6 +121,7 @@ bool EnableItemUnlocker(){ return bEnableItemUnlocker; }
 bool EnableEntitlementUnlocker(){ return bEnableEntitlementUnlocker; }
 bool EnableOverlay(){ return bEnableOverlay; }
 bool ForceAchievementsConfig(){ return bForceAchievementsConfig; }
+bool EnableKeyboardNavigation(){ return bEnableKeyboardNavigation; }   // <-- NEW
 // Logging
 bool EnableLogging(){ return bEnableLogging; }
 std::string LogLevel(){ return sLogLevel; }

@@ -1,7 +1,8 @@
 #include "pch.h"
 #include "achievement_manager_ui.h"
 #include "Overlay.h"
-#include "achievement_manager.h"   // for refresh()
+#include "achievement_manager.h"
+#include "Config.h"
 #include "imgui/imgui_impl_win32.h"
 #include "imgui/imgui_impl_dx11.h"
 #include <algorithm>
@@ -10,12 +11,11 @@
 #include <string>
 #include <vector>
 
-// Forward declare ImGui Win32 handler (used internally)
 extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
 namespace AchievementManagerUI {
 
-// Fonts (global for the UI)
+// Fonts
 ImFont* bigFont = nullptr;
 ImFont* regularFont = nullptr;
 ImFont* achievementNameFont = nullptr;
@@ -37,11 +37,21 @@ static const char* fontPaths[] = {
 
 // UI state
 static char searchBuffer[128] = "";
-static int filterMode = 0; // 0 = All, 1 = Locked only, 2 = Unlocked only
+static int filterMode = 0; // 0 = All, 1 = Locked only, 2 = Unlocked only, 3 = Hidden only
 static int currentPage = 0;
 static int itemsPerPage = 50;
 static const int PAGINATION_THRESHOLD = 200;
 static bool initialized = false;
+
+// Focus flags
+static bool s_focusWindow = false;
+static bool s_focusSearch = false;
+
+// Cached filtered indices for performance
+static std::vector<int> s_filteredIndices;
+static std::string s_lastSearch;
+static int s_lastFilterMode = -1;
+static bool s_cacheValid = false;
 
 // ----------------------------------------------------------------------------
 // Helper: case‑insensitive substring
@@ -55,7 +65,7 @@ static bool containsIgnoreCase(const std::string& haystack, const std::string& n
 }
 
 // ----------------------------------------------------------------------------
-// Helper: copy text to clipboard (for right‑click context menu)
+// Helper: copy text to clipboard
 // ----------------------------------------------------------------------------
 static void CopyToClipboard(const char* text) {
     if (OpenClipboard(nullptr)) {
@@ -75,7 +85,7 @@ static void CopyToClipboard(const char* text) {
 }
 
 // ----------------------------------------------------------------------------
-// Helper to draw centred text with scaling
+// Helper: centred text with scaling
 // ----------------------------------------------------------------------------
 static void FitTextToWindow(ImFont* font, const ImVec4 color, const char* text) {
     ImGui::PushFont(font);
@@ -92,7 +102,58 @@ static void FitTextToWindow(ImFont* font, const ImVec4 color, const char* text) 
 }
 
 // ----------------------------------------------------------------------------
-// ImGui initialisation (D3D11)
+// Public: request focus on next draw
+// ----------------------------------------------------------------------------
+void RequestFocus() {
+    s_focusWindow = true;
+    s_focusSearch = true;
+    Logger::ovrly("Focus requested for achievement overlay");
+}
+
+// ----------------------------------------------------------------------------
+// Invalidate filter cache when search/filter changes
+// ----------------------------------------------------------------------------
+static void InvalidateFilterCache() {
+    s_cacheValid = false;
+}
+
+// ----------------------------------------------------------------------------
+// Rebuild filtered indices if needed
+// ----------------------------------------------------------------------------
+static void UpdateFilteredIndices() {
+    std::string currentSearch(searchBuffer);
+    if (!s_cacheValid || currentSearch != s_lastSearch || filterMode != s_lastFilterMode) {
+        s_lastSearch = currentSearch;
+        s_lastFilterMode = filterMode;
+        s_filteredIndices.clear();
+
+        auto* achievements = Overlay::achievements;
+        if (!achievements || achievements->empty()) return;
+
+        std::string searchLower = currentSearch;
+        std::transform(searchLower.begin(), searchLower.end(), searchLower.begin(), ::tolower);
+
+        for (int i = 0; i < (int)achievements->size(); i++) {
+            const auto& ach = achievements->at(i);
+            if (filterMode == 1 && ach.UnlockState != UnlockState::Locked) continue;
+            if (filterMode == 2 && ach.UnlockState != UnlockState::Unlocked) continue;
+            if (filterMode == 3 && !ach.IsHidden) continue;   // Hidden filter
+            if (!searchLower.empty()) {
+                std::string name = ach.UnlockedDisplayName;
+                std::string desc = ach.UnlockedDescription;
+                std::transform(name.begin(), name.end(), name.begin(), ::tolower);
+                std::transform(desc.begin(), desc.end(), desc.begin(), ::tolower);
+                if (name.find(searchLower) == std::string::npos && desc.find(searchLower) == std::string::npos)
+                    continue;
+            }
+            s_filteredIndices.push_back(i);
+        }
+        s_cacheValid = true;
+    }
+}
+
+// ----------------------------------------------------------------------------
+// ImGui initialisation
 // ----------------------------------------------------------------------------
 void InitImGui(HWND hWnd, ID3D11Device* device, ID3D11DeviceContext* context) {
     IMGUI_CHECKVERSION();
@@ -100,7 +161,13 @@ void InitImGui(HWND hWnd, ID3D11Device* device, ID3D11DeviceContext* context) {
     ImGuiIO& io = ImGui::GetIO();
     io.IniFilename = nullptr;
 
-    // Modern style
+    if (Config::EnableKeyboardNavigation()) {
+        io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
+        Logger::ovrly("Keyboard navigation enabled");
+    } else {
+        Logger::ovrly("Keyboard navigation disabled");
+    }
+
     ImGuiStyle& style = ImGui::GetStyle();
     style.Colors[ImGuiCol_WindowBg]      = ImVec4(0.08f, 0.08f, 0.10f, 0.96f);
     style.Colors[ImGuiCol_ChildBg]       = ImVec4(0.10f, 0.10f, 0.12f, 0.85f);
@@ -129,7 +196,6 @@ void InitImGui(HWND hWnd, ID3D11Device* device, ID3D11DeviceContext* context) {
     style.ItemSpacing     = ImVec2(8, 8);
     style.ItemInnerSpacing = ImVec2(6, 6);
 
-    // Load fonts
     io.Fonts->Clear();
     ImFontConfig fontConfig;
     fontConfig.OversampleH = 2;
@@ -165,15 +231,14 @@ void InitImGui(HWND hWnd, ID3D11Device* device, ID3D11DeviceContext* context) {
         Logger::ovrly("Using default font");
     }
 
-    // Initialise ImGui backends
     ImGui_ImplWin32_Init(hWnd);
     ImGui_ImplDX11_Init(device, context);
     initialized = true;
-    Logger::ovrly("AchievementManagerUI initialised (Win32 + D3D11)");
+    Logger::ovrly("AchievementManagerUI initialised");
 }
 
 // ----------------------------------------------------------------------------
-// Shutdown (called from Overlay)
+// Shutdown
 // ----------------------------------------------------------------------------
 void ShutdownImGui() {
     if (initialized) {
@@ -186,10 +251,9 @@ void ShutdownImGui() {
 }
 
 // ----------------------------------------------------------------------------
-// Draw startup popup (shown for ~4.5 seconds, controlled by Overlay::bShowInitPopup)
+// Draw startup popup
 // ----------------------------------------------------------------------------
 void DrawInitPopup() {
-    // Use the global flag from Overlay (declared in Overlay.h)
     if (!Overlay::bShowInitPopup) return;
 
     static float popupTimer = 0.0f;
@@ -227,23 +291,70 @@ void DrawInitPopup() {
 }
 
 // ----------------------------------------------------------------------------
-// Main achievement list window
+// Main achievement list – top pagination only (sticky)
 // ----------------------------------------------------------------------------
 void DrawAchievementList() {
     ImGuiIO& io = ImGui::GetIO();
-    
+
+    // Fallback symbol for rows when icon texture is missing
+    static const char* fallbackSymbol = "♥";
+
+    if (s_focusWindow) {
+        ImGui::SetNextWindowFocus();
+        s_focusWindow = false;
+    }
+
     ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(0.08f, 0.08f, 0.10f, 0.96f));
     ImGui::Begin("AchievementManagerUI", nullptr, ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoMove);
     ImGui::PopStyleColor();
 
+    if (s_focusSearch) {
+        ImGui::SetKeyboardFocusHere(0);
+        s_focusSearch = false;
+    }
+
     ImGui::SetWindowPos(ImVec2(0, 0));
     ImGui::SetWindowSize(ImVec2(450, io.DisplaySize.y));
 
-    FitTextToWindow(bigFont, ImVec4(0.0f, 0.85f, 0.0f, 1.0f), "  EPIC ACHIEVEMENTS UNLOCKER  ");
+    // ============================================================
+    // Modern centered title with red hearts (extra large)
+    // ============================================================
+    const char* heartSymbol = "♥";
+    const char* titleText = " Epic Unlocker ";
+    
+    ImGui::PushFont(bigFont);
+    float heartWidth = ImGui::CalcTextSize(heartSymbol).x;
+    float titleWidth = ImGui::CalcTextSize(titleText).x;
+    float totalWidth = heartWidth * 2 + titleWidth + 10.0f; // 5px spacing each side
+    ImGui::PopFont();
+
+    float windowWidth = ImGui::GetWindowWidth();
+    float startX = (windowWidth - totalWidth) * 0.5f;
+    ImGui::SetCursorPosX(startX);
+
+    // Left heart (red)
+    ImGui::PushFont(bigFont);
+    ImGui::TextColored(ImVec4(1.0f, 0.2f, 0.3f, 1.0f), "%s", heartSymbol);
+    ImGui::PopFont();
+    ImGui::SameLine(0.0f, 5.0f);
+
+    // Title text (white, extra large)
+    ImGui::PushFont(bigFont);
+    ImGui::TextColored(ImVec4(1.0f, 1.0f, 1.0f, 1.0f), "%s", titleText);
+    ImGui::PopFont();
+    ImGui::SameLine(0.0f, 5.0f);
+
+    // Right heart (red)
+    ImGui::PushFont(bigFont);
+    ImGui::TextColored(ImVec4(1.0f, 0.2f, 0.3f, 1.0f), "%s", heartSymbol);
+    ImGui::PopFont();
+
     ImGui::Separator();
     ImGui::Spacing();
 
+    // ------------------------------------------------------------------
     // Statistics + progress bar
+    // ------------------------------------------------------------------
     if (Overlay::achievements && Overlay::achievements->size() > 0) {
         int total = (int)Overlay::achievements->size();
         int unlocked = 0;
@@ -259,193 +370,184 @@ void DrawAchievementList() {
         ImGui::Spacing();
     }
 
+    // ------------------------------------------------------------------
     // Filter controls + Refresh button
+    // ------------------------------------------------------------------
+    bool filterChanged = false;
     ImGui::BeginGroup();
     ImGui::PushItemWidth(150);
     if (ImGui::InputTextWithHint("##search", "Filter...", searchBuffer, sizeof(searchBuffer))) {
-        currentPage = 0;   // reset pagination on new search
+        filterChanged = true;
+        currentPage = 0;
     }
     ImGui::PopItemWidth();
     ImGui::SameLine();
-    if (ImGui::Button("All")) { filterMode = 0; currentPage = 0; }
+    if (ImGui::Button("All")) { filterMode = 0; filterChanged = true; currentPage = 0; }
     ImGui::SameLine();
-    if (ImGui::Button("Locked")) { filterMode = 1; currentPage = 0; }
+    if (ImGui::Button("Locked")) { filterMode = 1; filterChanged = true; currentPage = 0; }
     ImGui::SameLine();
-    if (ImGui::Button("Unlocked")) { filterMode = 2; currentPage = 0; }
+    if (ImGui::Button("Unlocked")) { filterMode = 2; filterChanged = true; currentPage = 0; }
+    ImGui::SameLine();
+    if (ImGui::Button("Hidden")) { filterMode = 3; filterChanged = true; currentPage = 0; }
     if (strlen(searchBuffer) > 0 || filterMode != 0) {
         ImGui::SameLine();
         if (ImGui::Button("Clear")) {
             searchBuffer[0] = '\0';
             filterMode = 0;
+            filterChanged = true;
             currentPage = 0;
         }
     }
     ImGui::SameLine();
     if (ImGui::Button("Refresh")) {
         AchievementManager::refresh();
+        filterChanged = true;
     }
     ImGui::EndGroup();
     ImGui::Spacing();
     ImGui::SetCursorPosY(ImGui::GetCursorPosY() - 4.0f);
 
+    if (filterChanged) {
+        InvalidateFilterCache();
+    }
+
+    // ------------------------------------------------------------------
+    // Top pagination (sticky)
+    // ------------------------------------------------------------------
+    UpdateFilteredIndices();
+    int totalFiltered = (int)s_filteredIndices.size();
+    bool usePagination = (totalFiltered > PAGINATION_THRESHOLD);
+    if (usePagination) {
+        int totalPages = (totalFiltered + itemsPerPage - 1) / itemsPerPage;
+        if (currentPage >= totalPages) currentPage = totalPages - 1;
+        if (currentPage < 0) currentPage = 0;
+        
+        ImGui::BeginGroup();
+        ImGui::Text("Page %d / %d", currentPage + 1, totalPages);
+        ImGui::SameLine();
+        if (ImGui::Button("<<")) currentPage = 0;
+        ImGui::SameLine();
+        if (ImGui::Button("<") && currentPage > 0) currentPage--;
+        ImGui::SameLine();
+        if (ImGui::Button(">") && currentPage < totalPages - 1) currentPage++;
+        ImGui::SameLine();
+        if (ImGui::Button(">>")) currentPage = totalPages - 1;
+        ImGui::SameLine();
+        ImGui::Text("  (%d achievements)", totalFiltered);
+        ImGui::EndGroup();
+        ImGui::Spacing();
+    }
+
+    // ------------------------------------------------------------------
+    // Achievement list (virtual scrolling)
+    // ------------------------------------------------------------------
     ImGui::BeginChild("AchievementList", ImVec2(0, 0), false, ImGuiWindowFlags_AlwaysVerticalScrollbar);
 
     if (Overlay::achievements == nullptr || Overlay::achievements->size() == 0) {
         ImGui::TextColored(ImVec4(1, 1, 0, 1), "Loading achievements...");
     } else {
-        // Build filtered list
-        std::vector<int> filteredIndices;
-        std::string searchLower(searchBuffer);
-        for (int i = 0; i < (int)Overlay::achievements->size(); i++) {
-            const auto& ach = Overlay::achievements->at(i);
-            if (filterMode == 1 && ach.UnlockState != UnlockState::Locked) continue;
-            if (filterMode == 2 && ach.UnlockState != UnlockState::Unlocked) continue;
-            if (!searchLower.empty()) {
-                std::string name(ach.UnlockedDisplayName);
-                std::string desc(ach.UnlockedDescription);
-                if (!containsIgnoreCase(name, searchLower) && !containsIgnoreCase(desc, searchLower))
-                    continue;
-            }
-            filteredIndices.push_back(i);
-        }
+        if (totalFiltered == 0) {
+            ImGui::TextColored(ImVec4(1, 1, 0, 1), "No achievements match the filter.");
+        } else {
+            int startIdx = usePagination ? currentPage * itemsPerPage : 0;
+            int endIdx = usePagination ? (std::min)(startIdx + itemsPerPage, totalFiltered) : totalFiltered;
 
-        int totalFiltered = (int)filteredIndices.size();
-        bool usePagination = (totalFiltered > PAGINATION_THRESHOLD);
-        
-        if (usePagination) {
-            int totalPages = (totalFiltered + itemsPerPage - 1) / itemsPerPage;
-            if (currentPage >= totalPages) currentPage = totalPages - 1;
-            if (currentPage < 0) currentPage = 0;
-            
-            ImGui::BeginGroup();
-            ImGui::Text("Page %d / %d", currentPage + 1, totalPages);
-            ImGui::SameLine();
-            if (ImGui::Button("<<")) currentPage = 0;
-            ImGui::SameLine();
-            if (ImGui::Button("<") && currentPage > 0) currentPage--;
-            ImGui::SameLine();
-            if (ImGui::Button(">") && currentPage < totalPages - 1) currentPage++;
-            ImGui::SameLine();
-            if (ImGui::Button(">>")) currentPage = totalPages - 1;
-            ImGui::SameLine();
-            ImGui::Text("  (%d achievements)", totalFiltered);
-            ImGui::EndGroup();
-            ImGui::Spacing();
-        }
+            float rowHeight = 70.0f;
+            ImDrawList* drawList = ImGui::GetWindowDrawList();
+            ImVec2 startPos = ImGui::GetCursorScreenPos();
 
-        int startIdx = usePagination ? currentPage * itemsPerPage : 0;
-        int endIdx = usePagination ? (std::min)(startIdx + itemsPerPage, totalFiltered) : totalFiltered;
+            for (int row = startIdx; row < endIdx; row++) {
+                int idx = s_filteredIndices[row];
+                auto& achievement = Overlay::achievements->at(idx);
+                ImGui::PushID(idx);
 
-        float rowHeight = 70.0f;
-        ImDrawList* drawList = ImGui::GetWindowDrawList();
-        ImVec2 startPos = ImGui::GetCursorScreenPos();
+                ImVec2 rowMin = ImVec2(startPos.x, startPos.y + (row - startIdx) * rowHeight);
+                ImVec2 rowMax = ImVec2(rowMin.x + ImGui::GetWindowWidth(), rowMin.y + rowHeight);
+                ImU32 bgColor = (row % 2 == 0) ? IM_COL32(30, 30, 35, 230) : IM_COL32(25, 25, 30, 230);
+                drawList->AddRectFilled(rowMin, rowMax, bgColor, 4.0f);
 
-        for (int row = startIdx; row < endIdx; row++) {
-            int idx = filteredIndices[row];
-            auto& achievement = Overlay::achievements->at(idx);
-            ImGui::PushID(idx);
+                ImGui::SetCursorScreenPos(rowMin);
 
-            ImVec2 rowMin = ImVec2(startPos.x, startPos.y + (row - startIdx) * rowHeight);
-            ImVec2 rowMax = ImVec2(rowMin.x + ImGui::GetWindowWidth(), rowMin.y + rowHeight);
-            ImU32 bgColor = (row % 2 == 0) ? IM_COL32(30, 30, 35, 230) : IM_COL32(25, 25, 30, 230);
-            drawList->AddRectFilled(rowMin, rowMax, bgColor, 4.0f);
+                // Achievement icon (if loaded) or fallback heart
+                float iconHeight = 50.0f;
+                float iconYOffset = (rowHeight - iconHeight) / 2.0f;
+                ImGui::SetCursorPosY(ImGui::GetCursorPosY() + iconYOffset);
 
-            ImGui::SetCursorScreenPos(rowMin);
-
-            // Star icon
-            float iconHeight = 50.0f;
-            float iconYOffset = (rowHeight - iconHeight) / 2.0f;
-            ImGui::SetCursorPosY(ImGui::GetCursorPosY() + iconYOffset);
-            ImGui::PushFont(bigFont);
-            ImGui::TextUnformatted("★");
-            ImGui::PopFont();
-            ImGui::SameLine();
-
-            // Text area
-            float rightColumnWidth = 85.0f;
-            float iconWidth = 50.0f;
-            float padding = 15.0f;
-            float textWidth = ImGui::GetWindowWidth() - iconWidth - rightColumnWidth - padding;
-            if (textWidth < 100.0f) textWidth = 100.0f;
-
-            ImGui::BeginGroup();
-            ImGui::PushTextWrapPos(ImGui::GetCursorPosX() + textWidth);
-
-            ImGui::PushFont(achievementNameFont);
-            ImGui::TextColored(ImVec4(1, 1, 1, 1), achievement.UnlockedDisplayName);
-            ImGui::PopFont();
-
-            ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.85f, 0.85f, 0.90f, 1.0f));
-            ImGui::PushFont(descriptionFont);
-            ImGui::TextWrapped(achievement.UnlockedDescription);
-            ImGui::PopFont();
-            ImGui::PopStyleColor();
-
-            ImGui::PopTextWrapPos();
-            ImGui::EndGroup();
-
-            // Right column (Hidden / Unlock button) – FIXED: changed bIsHidden to IsHidden
-            float rightContentHeight = 0.0f;
-            if (achievement.IsHidden) rightContentHeight += 20.0f;   // was bIsHidden
-            if (achievement.UnlockState == UnlockState::Locked) rightContentHeight += 28.0f;
-            else rightContentHeight += 20.0f;
-            
-            float rightX = ImGui::GetWindowWidth() - rightColumnWidth;
-            float rightY = rowMin.y + (rowHeight - rightContentHeight) / 2.0f;
-            ImGui::SetCursorScreenPos(ImVec2(rightX, rightY));
-
-            ImGui::BeginGroup();
-            if (achievement.IsHidden) {   // was bIsHidden
-                ImGui::TextColored(ImVec4(0.9f, 0.5f, 0.2f, 1), "Hidden");
-            }
-            switch (achievement.UnlockState) {
-            case UnlockState::Unlocked:
-                ImGui::TextColored(ImVec4(0, 0.9f, 0, 1), "Unlocked");
-                break;
-            case UnlockState::Unlocking:
-                ImGui::TextColored(ImVec4(0.9f, 0.9f, 0, 1), "Unlocking...");
-                break;
-            case UnlockState::Locked:
-                if (ImGui::Button("Unlock", ImVec2(70, 28))) {
-                    Overlay::unlockAchievement(&achievement);
+                if (achievement.IconTexture) {
+                    ImGui::Image(achievement.IconTexture, ImVec2(iconHeight, iconHeight));
+                } else {
+                    ImGui::PushFont(bigFont);
+                    ImGui::TextColored(ImVec4(1.0f, 0.85f, 0.2f, 1.0f), "%s", fallbackSymbol);
+                    ImGui::PopFont();
                 }
-                break;
-            }
-            ImGui::EndGroup();
+                ImGui::SameLine();
 
-            // Right-click context menu
-            if (ImGui::IsItemHovered() && ImGui::IsMouseClicked(ImGuiMouseButton_Right)) {
-                ImGui::OpenPopup("AchievementContextMenu");
-            }
-            if (ImGui::BeginPopup("AchievementContextMenu")) {
-                if (ImGui::Selectable("Copy Achievement ID")) {
-                    CopyToClipboard(achievement.AchievementId);
+                // Text area
+                float rightColumnWidth = 85.0f;
+                float iconWidth = 50.0f;
+                float padding = 15.0f;
+                float textWidth = ImGui::GetWindowWidth() - iconWidth - rightColumnWidth - padding;
+                if (textWidth < 100.0f) textWidth = 100.0f;
+
+                ImGui::BeginGroup();
+                ImGui::PushTextWrapPos(ImGui::GetCursorPosX() + textWidth);
+
+                ImGui::PushFont(achievementNameFont);
+                ImGui::TextColored(ImVec4(1, 1, 1, 1), achievement.UnlockedDisplayName);
+                ImGui::PopFont();
+
+                ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.85f, 0.85f, 0.90f, 1.0f));
+                ImGui::PushFont(descriptionFont);
+                ImGui::TextWrapped(achievement.UnlockedDescription);
+                ImGui::PopFont();
+                ImGui::PopStyleColor();
+
+                ImGui::PopTextWrapPos();
+                ImGui::EndGroup();
+
+                // Right column
+                float rightContentHeight = 0.0f;
+                if (achievement.IsHidden) rightContentHeight += 20.0f;
+                if (achievement.UnlockState == UnlockState::Locked) rightContentHeight += 28.0f;
+                else rightContentHeight += 20.0f;
+                
+                float rightX = ImGui::GetWindowWidth() - rightColumnWidth;
+                float rightY = rowMin.y + (rowHeight - rightContentHeight) / 2.0f;
+                ImGui::SetCursorScreenPos(ImVec2(rightX, rightY));
+
+                ImGui::BeginGroup();
+                if (achievement.IsHidden) {
+                    ImGui::TextColored(ImVec4(0.9f, 0.5f, 0.2f, 1), "Hidden");
                 }
-                ImGui::EndPopup();
-            }
+                switch (achievement.UnlockState) {
+                case UnlockState::Unlocked:
+                    ImGui::TextColored(ImVec4(0, 0.9f, 0, 1), "Unlocked");
+                    break;
+                case UnlockState::Unlocking:
+                    ImGui::TextColored(ImVec4(0.9f, 0.9f, 0, 1), "Unlocking...");
+                    break;
+                case UnlockState::Locked:
+                    if (ImGui::Button("Unlock", ImVec2(70, 28))) {
+                        Overlay::unlockAchievement(&achievement);
+                    }
+                    break;
+                }
+                ImGui::EndGroup();
 
-            ImGui::PopID();
-        }
-        ImGui::SetCursorScreenPos(ImVec2(startPos.x, startPos.y + (endIdx - startIdx) * rowHeight));
-        
-        if (usePagination && totalFiltered > itemsPerPage) {
-            ImGui::Spacing();
-            ImGui::Separator();
-            ImGui::Spacing();
-            int totalPages = (totalFiltered + itemsPerPage - 1) / itemsPerPage;
-            ImGui::BeginGroup();
-            ImGui::Text("Page %d / %d", currentPage + 1, totalPages);
-            ImGui::SameLine();
-            if (ImGui::Button("<<")) currentPage = 0;
-            ImGui::SameLine();
-            if (ImGui::Button("<") && currentPage > 0) currentPage--;
-            ImGui::SameLine();
-            if (ImGui::Button(">") && currentPage < totalPages - 1) currentPage++;
-            ImGui::SameLine();
-            if (ImGui::Button(">>")) currentPage = totalPages - 1;
-            ImGui::SameLine();
-            ImGui::Text("  (%d achievements)", totalFiltered);
-            ImGui::EndGroup();
+                // Right-click context menu
+                if (ImGui::IsItemHovered() && ImGui::IsMouseClicked(ImGuiMouseButton_Right)) {
+                    ImGui::OpenPopup("AchievementContextMenu");
+                }
+                if (ImGui::BeginPopup("AchievementContextMenu")) {
+                    if (ImGui::Selectable("Copy Achievement ID")) {
+                        CopyToClipboard(achievement.AchievementId);
+                    }
+                    ImGui::EndPopup();
+                }
+
+                ImGui::PopID();
+            }
+            ImGui::SetCursorScreenPos(ImVec2(startPos.x, startPos.y + (endIdx - startIdx) * rowHeight));
         }
     }
     ImGui::EndChild();
